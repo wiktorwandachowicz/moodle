@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/data/db" VERSION="20100428" COMMENT="XMLDB file for Moodle mod/data"
+<XMLDB PATH="mod/data/db" VERSION="20120927" COMMENT="XMLDB file for Moodle mod/data"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -38,7 +38,9 @@
         <FIELD NAME="defaultsort" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="assesstimefinish" NEXT="defaultsortdir"/>
         <FIELD NAME="defaultsortdir" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="defaultsort" NEXT="editany"/>
         <FIELD NAME="editany" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="defaultsortdir" NEXT="notification"/>
-        <FIELD NAME="notification" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="Notify people when things change" PREVIOUS="editany"/>
+        <FIELD NAME="notification" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="Notify people when things change" PREVIOUS="editany" NEXT="workflowenable"/>
+        <FIELD NAME="workflowenable" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable workflow support for database records" PREVIOUS="notification" NEXT="workflowid"/>
+        <FIELD NAME="workflowid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="FK of workflow used for this database" PREVIOUS="workflowenable"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -81,14 +83,15 @@
         <FIELD NAME="dataid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="groupid" NEXT="timecreated"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="dataid" NEXT="timemodified"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="timecreated" NEXT="approved"/>
-        <FIELD NAME="approved" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="timemodified"/>
+        <FIELD NAME="approved" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="timemodified" NEXT="wfstateid"/>
+        <FIELD NAME="wfstateid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="workflow state the record is in" PREVIOUS="approved"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="dataid"/>
         <KEY NAME="dataid" TYPE="foreign" FIELDS="dataid" REFTABLE="data" REFFIELDS="id" PREVIOUS="primary"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="data_content" COMMENT="the content introduced in each record/fields" PREVIOUS="data_records">
+    <TABLE NAME="data_content" COMMENT="the content introduced in each record/fields" PREVIOUS="data_records" NEXT="data_wf">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="fieldid"/>
         <FIELD NAME="fieldid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="id" NEXT="recordid"/>
@@ -104,6 +107,61 @@
         <KEY NAME="recordid" TYPE="foreign" FIELDS="recordid" REFTABLE="data_records" REFFIELDS="id" PREVIOUS="primary" NEXT="fieldid"/>
         <KEY NAME="fieldid" TYPE="foreign" FIELDS="fieldid" REFTABLE="data_fields" REFFIELDS="id" PREVIOUS="recordid"/>
       </KEYS>
+    </TABLE>
+    <TABLE NAME="data_wf" COMMENT="Table of defined workflows, both global and course-specific" PREVIOUS="data_content" NEXT="data_wf_states">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="wfname"/>
+        <FIELD NAME="wfname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="id" NEXT="courseid"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="workflow type selector - global (courseid=0), or course-specific (courseid&amp;lt;&amp;gt;0)" PREVIOUS="wfname" NEXT="initstateid"/>
+        <FIELD NAME="initstateid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="courseid"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="data_wf_states" COMMENT="States for each workflow, to which records can be assigned" PREVIOUS="data_wf" NEXT="data_wf_actions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="wfid"/>
+        <FIELD NAME="wfid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="statename"/>
+        <FIELD NAME="statename" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="wfid" NEXT="statedescr"/>
+        <FIELD NAME="statedescr" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="statename"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="wfid"/>
+        <KEY NAME="wfid" TYPE="foreign" FIELDS="wfid" REFTABLE="data_wf" REFFIELDS="id" PREVIOUS="primary"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="data_wf_actions" COMMENT="Actions table describing transitions between workflow states" PREVIOUS="data_wf_states" NEXT="data_wf_state_role_allow">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="wfid"/>
+        <FIELD NAME="wfid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="fromstateid"/>
+        <FIELD NAME="fromstateid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="wfid" NEXT="tostateid"/>
+        <FIELD NAME="tostateid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="fromstateid" NEXT="actname"/>
+        <FIELD NAME="actname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="tostateid" NEXT="actdescr"/>
+        <FIELD NAME="actdescr" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="actname"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="wfid"/>
+        <KEY NAME="wfid" TYPE="foreign" FIELDS="wfid" REFTABLE="data_wf" REFFIELDS="id" PREVIOUS="primary" NEXT="fromstateid"/>
+        <KEY NAME="fromstateid" TYPE="foreign" FIELDS="fromstateid" REFTABLE="data_wf_states" REFFIELDS="id" PREVIOUS="wfid" NEXT="tostateid"/>
+        <KEY NAME="tostateid" TYPE="foreign" FIELDS="tostateid" REFTABLE="data_wf_states" REFFIELDS="id" PREVIOUS="fromstateid"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="data_wf_state_role_allow" COMMENT="This defines what role can set workflow state for record" PREVIOUS="data_wf_actions">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="wfid"/>
+        <FIELD NAME="wfid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="roleid"/>
+        <FIELD NAME="roleid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="wfid" NEXT="allowstateid"/>
+        <FIELD NAME="allowstateid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="roleid"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="wfid"/>
+        <KEY NAME="wfid" TYPE="foreign" FIELDS="wfid" REFTABLE="data_wf" REFFIELDS="id" PREVIOUS="primary" NEXT="allowstateid"/>
+        <KEY NAME="allowstateid" TYPE="foreign" FIELDS="allowstateid" REFTABLE="data_wf_states" REFFIELDS="id" PREVIOUS="wfid"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="wfstateroleallow" UNIQUE="false" FIELDS="wfid, allowstateid"/>
+      </INDEXES>
     </TABLE>
   </TABLES>
 </XMLDB>

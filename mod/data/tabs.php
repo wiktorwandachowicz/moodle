@@ -77,6 +77,10 @@
             $row[] = new tabobject('presets', $CFG->wwwroot.'/mod/data/preset.php?d='.$data->id,
                          get_string('presets', 'data'));
         }
+        if (has_capability('mod/data:manageworkflows', $context)) {
+            $row[] = new tabobject('workflows', $CFG->wwwroot.'/mod/data/workflows.php?d='.$data->id,
+                         get_string('workflows', 'data'));
+        }
     }
 
     $tabs[] = $row;
@@ -100,6 +104,28 @@
         }
         $tabs[] = $row;
         $activetwo = array('templates');
+    }
+
+    if ($currenttab == 'workflows' and isset($mode)) {
+
+        $inactive = array();
+        $inactive[] = 'workflows';
+        $actionlist = array ('wfdefinitions', 'wfactions', 'wfallows');
+        $wf = (empty($wfid) ? '' : '&amp;wf='.$wfid);
+
+        $row  = array();
+        $currenttab = '';
+        foreach ($actionlist as $action) {
+            $row[] = new tabobject($action, "workflows.php?d=$data->id&amp;mode=$action".$wf, get_string($action, 'data'));
+            if ($action == $mode) {
+                $currenttab = $action;
+            }
+        }
+        if ($currenttab == '') {
+            $currenttab = $mode = 'workflows';
+        }
+        $tabs[] = $row;
+        $activetwo = array('workflows');
     }
 
 // Print out the tabs and continue!

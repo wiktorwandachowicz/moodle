@@ -796,6 +796,7 @@ function data_add_record($data, $groupid=0){
     } else {
         $record->approved = 0;
     }
+    $record->wfstateid = $data->wfstateid;
     return $DB->insert_record('data_records', $record);
 }
 
@@ -874,6 +875,10 @@ function data_update_instance($data) {
 
     if (empty($data->notification)) {
         $data->notification = 0;
+    }
+
+    if (empty($data->workflowenable)) {
+        $data->workflowenable = 0;
     }
 
     $DB->update_record('data', $data);
@@ -1225,7 +1230,7 @@ function data_get_participants($dataid) {
  * @return mixed
  */
 function data_print_template($template, $records, $data, $search='', $page=0, $return=false) {
-    global $CFG, $DB, $OUTPUT;
+    global $CFG, $DB, $OUTPUT, $PAGE;
     $cm = get_coursemodule_from_instance('data', $data->id);
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 
@@ -1251,6 +1256,9 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
         return;
     }
 
+    // Check if workflow is enabled for this database
+    $hasworkflow = ($data->workflowenable > 0 && $data->workflowid > 0);
+
     // Check whether this activity is read-only at present
     $readonly = data_in_readonly_period($data);
 
@@ -1266,10 +1274,13 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
             $replacement[] = highlight($search, $field->display_browse_field($record->id, $template));
         }
 
+    // Check if editing and state change is allowed
+        $allowchange = (!$hasworkflow || $record->allowchange);
+
     // Replacing special tags (##Edit##, ##Delete##, ##More##)
         $patterns[]='##edit##';
         $patterns[]='##delete##';
-        if (has_capability('mod/data:manageentries', $context) || (!$readonly && data_isowner($record->id))) {
+        if ($allowchange && (has_capability('mod/data:manageentries', $context) || (!$readonly && data_isowner($record->id)))) {
             $replacement[] = '<a href="'.$CFG->wwwroot.'/mod/data/edit.php?d='
                              .$data->id.'&amp;rid='.$record->id.'&amp;sesskey='.sesskey().'"><img src="'.$OUTPUT->pix_url('t/edit') . '" class="iconsmall" alt="'.get_string('edit').'" title="'.get_string('edit').'" /></a>';
             $replacement[] = '<a href="'.$CFG->wwwroot.'/mod/data/view.php?d='
@@ -1288,6 +1299,22 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
 
         $patterns[]='##moreurl##';
         $replacement[] = $moreurl;
+
+    // Replacing workflow tags (##State##, ##Workflow##)
+        $patterns[]='##state##';
+        $patterns[]='##workflow##';
+        if ($hasworkflow) {
+            require_once('wflib.php');
+            $replacement[] = '<span class="wfstate">'. $record->statename.(empty($record->statedescr) ? '' : ' - '.$record->statedescr) .'</span>';
+            if ($record->allowchange) {
+                $replacement[] = workflow_actions_form($data->id, $record);
+            } else {
+                $replacement[] = $record->showactions ? workflow_actions_form(0, $record) : '';
+            }
+        } else {
+            $replacement[] = '';
+            $replacement[] = '';
+        }
 
         $patterns[]='##user##';
         $replacement[] = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$record->userid.
@@ -3108,6 +3135,10 @@ function data_extend_settings_navigation(settings_navigation $settings, navigati
         $datanode->add(get_string('presets', 'data'), new moodle_url('/mod/data/preset.php', array('d'=>$data->id)));
     }
 
+    if (has_capability('mod/data:manageworkflows', $PAGE->cm->context)) {
+        $datanode->add(get_string('workflows', 'data'), new moodle_url('/mod/data/workflows.php', array('d'=>$data->id)));
+    }
+
     if (!empty($CFG->enablerssfeeds) && !empty($CFG->data_enablerssfeeds) && $data->rssarticles > 0) {
         require_once("$CFG->libdir/rsslib.php");
 
@@ -3467,21 +3498,28 @@ function data_user_can_delete_preset($context, $preset) {
 /**
  * Get all of the record ids from a database activity.
  *
- * @param int $dataid      The dataid of the database module.
- * @return array $idarray  An array of record ids
+ * @param int    $dataid      The dataid of the database module.
+ * @param object $selectdata  Contains an additional sql statement for the
+ *                            where clause for group and approval fields.
+ * @param array  $params      Parameters that coincide with the sql statement.
+ * @return array $idarray     An array of record ids
  */
-function data_get_all_recordids($dataid) {
+function data_get_all_recordids($dataid, $selectdata = '', $params = null) {
     global $DB;
-    $initsql = 'SELECT c.recordid
-                  FROM {data_fields} f,
-                       {data_content} c
-                 WHERE f.dataid = :dataid
-                   AND f.id = c.fieldid
-              GROUP BY c.recordid';
-    $initrecord = $DB->get_recordset_sql($initsql, array('dataid' => $dataid));
+    $initsql = 'SELECT r.id
+                  FROM {data_records} r
+                 WHERE r.dataid = :dataid';
+    if ($selectdata != '') {
+        $initsql .= $selectdata;
+        $params = array_merge(array('dataid' => $dataid), $params);
+    } else {
+        $params = array('dataid' => $dataid);
+    }
+    $initsql .= ' GROUP BY r.id';
+    $initrecord = $DB->get_recordset_sql($initsql, $params);
     $idarray = array();
     foreach ($initrecord as $data) {
-        $idarray[] = $data->recordid;
+        $idarray[] = $data->id;
     }
     // Close the record set and free up resources.
     $initrecord->close();
@@ -3626,8 +3664,7 @@ function data_get_advanced_search_sql($sort, $data, $recordids, $selectdata, $so
     } else {
         list($insql, $inparam) = $DB->get_in_or_equal(array('-1'), SQL_PARAMS_NAMED);
     }
-    $nestfromsql .= ' AND c.recordid ' . $insql . $groupsql;
-    $nestfromsql = "$nestfromsql $selectdata";
+    $nestfromsql .= ' AND c.recordid ' . $insql . $selectdata . $groupsql;
     $sqlselect['sql'] = "$nestselectsql $nestfromsql $sortorder";
     $sqlselect['params'] = $inparam;
     return $sqlselect;

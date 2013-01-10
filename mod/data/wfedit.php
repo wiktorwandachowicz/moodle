@@ -1,0 +1,163 @@
+<?php
+
+/**
+ * Lets the user edit workflow definitions.
+ *
+ * Responds to actions:
+ *   add       - add a new workflow (no 'id' param given)
+ *   edit      - edit the definition of a workflow ('id' param given)
+ *   delete    - delete a workflow its states, actions and allows,
+ *               reset state of records referring to deleted states
+ *               ('id' and 'delete' params given)
+ *
+ * @package    mod-data
+ * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+require_once(dirname(__FILE__) . '/../../config.php');
+require_once('wfedit_form.php');
+
+/// Get url variables
+$courseid = optional_param('courseid', 0, PARAM_INT);
+$d        = optional_param('d', 0, PARAM_INT);   // database id
+$id       = optional_param('id', 0, PARAM_INT);   // workflow id
+$delete   = optional_param('delete', 0, PARAM_INT);    //delete workflowid
+$confirm  = optional_param('confirm', 0, PARAM_BOOL);
+
+if ($id) {
+    if (!$workflow = $DB->get_record('data_wf', array('id'=>$id))) {
+        print_error('invalidworkflowid', 'data');
+    }
+
+    if (!$courseid) {
+        $courseid = $workflow->courseid;
+    } else if ($workflow->courseid && ($courseid != $workflow->courseid)) {
+        print_error('invalidcourseid');
+    }
+
+    if ($courseid && !$course = $DB->get_record('course', array('id'=>$courseid))) {
+        print_error('invalidcourseid');
+    }
+
+} else {
+    if ($courseid && !$course = $DB->get_record('course', array('id'=>$courseid))) {
+        print_error('invalidcourseid');
+    }
+
+    $workflow = new stdClass();
+    $workflow->courseid = $courseid;
+}
+
+// Remember $d in workflow to be able to return to correct database after edit/cancel
+$workflow->d = $d;
+// Remember $wflocal in workflow to determine value for 'localworkflow' checkbox
+$workflow->wflocal = ($workflow->courseid != 0);
+// Remember $course in workflow to be able to restore courseid if wflocal is true
+$workflow->course = $courseid;
+// Remember $wfglobal in workflow to allow changing (enable) 'localworkflow' checkbox
+$systemcontext = get_context_instance(CONTEXT_SYSTEM);
+$hassiteconfig = has_capability('moodle/site:config', $systemcontext);
+$workflow->wfglobal = (int)$hassiteconfig;
+
+if ($id !== 0) {
+    $PAGE->set_url('/mod/data/wfedit.php', array('id'=>$id));
+} else {
+    $PAGE->set_url('/mod/data/wfedit.php', array('courseid'=>$courseid));
+}
+
+if ($workflow && !$courseid) {
+    // Editing global workflow
+    $course = null;
+    require_login();
+    $context = $systemcontext;
+    $PAGE->set_context($context);
+} else {
+    require_login($course);
+    $context = get_context_instance(CONTEXT_COURSE, $course->id);
+}
+require_capability('mod/data:manageworkflows', $context);
+
+$returnurl = new moodle_url('/mod/data/workflows.php', array('d'=>$d));
+
+if ($id and $delete) {
+    if (!$confirm) {
+        $PAGE->set_title(get_string('deleteworkflow', 'data'));
+        $PAGE->set_heading(($course ? $course->fullname . ': ' : '') . get_string('deleteworkflow', 'data'));
+        $PAGE->navbar->add(get_string('workflows', 'data'), $returnurl);
+        $PAGE->navbar->add(get_string('deleteworkflow', 'data'));
+        echo $OUTPUT->header();
+        $optionsyes = array('d'=>$d, 'id'=>$id, 'delete'=>1,
+                            'courseid'=>$courseid, 'sesskey'=>sesskey(), 'confirm'=>1);
+        $optionsno  = array('d'=>$d, 'wf'=>$id);
+        $formcontinue = new single_button(new moodle_url('wfedit.php', $optionsyes), get_string('yes'), 'get');
+        $formcancel = new single_button(new moodle_url($returnurl, $optionsno), get_string('no'), 'get');
+        $details = '<p><b>(' . $workflow->wfname . ')</b></p>';
+        echo $OUTPUT->confirm(get_string('deleteworkflowconfirm', 'data', $details), $formcontinue, $formcancel);
+        echo $OUTPUT->footer();
+        die;
+
+    } else if (confirm_sesskey()){
+        if (wf_delete_workflow($id)) {
+            redirect($returnurl);
+        } else {
+            print_error('erroreditworkflow', 'data', $returnurl);
+        }
+    }
+}
+
+$statecount = $DB->count_records('data_wf_states', array('wfid'=>$id));
+/*
+// Prepare the description editor: We do support files for group descriptions
+$editoroptions = array('maxfiles'=>EDITOR_UNLIMITED_FILES, 'maxbytes'=>$course->maxbytes, 'trust'=>false, 'context'=>$context, 'noclean'=>true);
+if (!empty($group->id)) {
+    $group = file_prepare_standard_editor($group, 'description', $editoroptions, $context, 'group', 'description', $group->id);
+} else {
+    $group = file_prepare_standard_editor($group, 'description', $editoroptions, $context, 'group', 'description', null);
+}
+*/
+$editoroptions = array('maxfiles'=>0, 'context'=>$context);
+$shortname = ($course ? $course->shortname : '');
+/// First create the form
+$editform = new workflow_form(null, array('editoroptions'=>$editoroptions,
+    'wfid'=>$id, 'statecount'=>$statecount, 'coursename'=>$shortname));
+$editform->set_data($workflow);
+
+if ($editform->is_cancelled()) {
+    if ($id)
+        $returnurl->param('wf', $id);
+    redirect($returnurl);
+
+} elseif ($data = $editform->get_data()) {
+    if ($data->id) {
+        wf_update_workflow($data, $editform, $editoroptions);
+        $returnurl->param('wf', $data->id);
+    } else {
+        $id = wf_create_workflow($data, $editform, $editoroptions);
+        $returnurl->param('wf', $id);
+    }
+    redirect($returnurl);
+}
+
+$strworkflows = get_string('workflows', 'data');
+
+if ($id) {
+    $strheading = get_string('editworkflow', 'data');
+} else {
+    $strheading = get_string('createworkflow', 'data');
+}
+
+$PAGE->navbar->add($strworkflows, $returnurl);
+$PAGE->navbar->add($strheading);
+
+/// Print header
+$PAGE->set_title($strheading);
+//$PAGE->set_heading(($course ? $course->fullname.': ' : '') . $strheading);
+echo $OUTPUT->header();
+echo $OUTPUT->heading($strheading);
+
+echo '<div id="workfloweditform">'.PHP_EOL;
+$editform->display();
+echo '</div>'.PHP_EOL;
+
+echo $OUTPUT->footer();
