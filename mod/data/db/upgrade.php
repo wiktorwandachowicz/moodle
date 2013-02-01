@@ -485,6 +485,7 @@ function xmldb_data_upgrade($oldversion) {
             $dbman->create_table($table);
         }
 
+
         // Define table data_wf_states to be created
         $table = new xmldb_table('data_wf_states');
 
@@ -551,6 +552,23 @@ function xmldb_data_upgrade($oldversion) {
 
         // data savepoint reached
         upgrade_mod_savepoint(true, 2012092600, 'data');
+    }
+
+    if ($oldversion < 2013012300) {
+
+        // Extend structure of data_wf_states
+        $table = new xmldb_table('data_wf_states');
+
+        // Define field notification to be added to data_wf_states
+        $field = new xmldb_field('notification', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '1', 'statedescr');
+
+        // Conditionally launch add field notification
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // data savepoint reached
+        upgrade_mod_savepoint(true, 2013012300, 'data');
     }
 
     return true;

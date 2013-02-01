@@ -54,6 +54,7 @@ if ($id) {
     // Prepare new state
     $state = new stdClass();
     $state->wfid = $wfid;
+    $state->notification = STATE_NOTIFY_CREATOR;
 }
 
 // Check course correctness

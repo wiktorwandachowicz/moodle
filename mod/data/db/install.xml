@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="mod/data/db" VERSION="20120927" COMMENT="XMLDB file for Moodle mod/data"
+<XMLDB PATH="mod/data/db" VERSION="20130123" COMMENT="XMLDB file for Moodle mod/data"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -124,7 +124,8 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="wfid"/>
         <FIELD NAME="wfid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="id" NEXT="statename"/>
         <FIELD NAME="statename" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="wfid" NEXT="statedescr"/>
-        <FIELD NAME="statedescr" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="statename"/>
+        <FIELD NAME="statedescr" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="statename" NEXT="notification"/>
+        <FIELD NAME="notification" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="1" SEQUENCE="false" COMMENT="Notify people when workflow state is set for record" PREVIOUS="statedescr"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="wfid"/>

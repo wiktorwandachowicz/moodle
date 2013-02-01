@@ -420,11 +420,14 @@
                     if (!data_workflow_allows_change($data, $course->id, $rid, $changerecord)) {
                         print_error('nostatechange', 'data');
                     }
-                    //echo "<h3>Set workflow state ($stateid) for record ($rid)</h3>";
-                    $record->groupid = $currentgroup;
-                    $record->timemodified = time();
-                    $record->wfstateid = $stateid;
-                    $DB->update_record('data_records', $record);
+                    if ($record->wfstateid != $stateid) {
+                        //echo "<h3>Set workflow state ($stateid) for record ($rid)</h3>";
+                        $record->groupid = $currentgroup;
+                        $record->timemodified = time();
+                        $record->wfstateid = $stateid;
+                        $DB->update_record('data_records', $record);
+                        send_workflow_state_notifications($USER, $data, $cm, $record, $stateid);
+                    }
                 }
             }
         }

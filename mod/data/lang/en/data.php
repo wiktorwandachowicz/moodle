@@ -276,6 +276,10 @@ $string['nosingletemplate'] = 'Single template is not yet defined';
 $string['nostatechange'] = 'Changing state of this record is not allowed';
 $string['nostates'] = '-- no states defined --';
 $string['notapproved'] = 'Entry is not approved yet.';
+$string['notifynobody'] = 'DO NOT notify anybody';
+$string['notifycreator'] = 'Notify CREATOR';
+$string['notifysupervisor'] = 'Notify SUPERVISOR';
+$string['notifyboth'] = 'Notify both CREATOR and SUPERVISOR';
 $string['notinjectivemap'] = 'Not an injective map';
 $string['notopenyet'] = 'Sorry, this activity is not available until {$a}';
 $string['number'] = 'Number';
@@ -343,6 +347,12 @@ $string['state'] = 'State';
 $string['state'] = 'State';
 $string['statename'] = 'State name';
 $string['statenameexists'] = 'State with this name already exists ({$a})';
+$string['statenotification'] = 'E-mail notifications';
+$string['statenotification_help'] = 'Who will be notified by e-mail when record enters this state. CREATOR is the default.';
+$string['statenotificationemailbody'] = 'User "{$a->user}" has changed the state of entry in "{$a->db}" to "{$a->state}"
+
+{$a->url}';
+$string['statenotificationemailsubject'] = '[{$a->course}] Change in database {$a->db}';
 $string['states'] = 'States';
 $string['subplugintype_datafield'] = 'Database field type';
 $string['subplugintype_datafield_plural'] = 'Database field types';

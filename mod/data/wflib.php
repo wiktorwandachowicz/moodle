@@ -26,6 +26,13 @@
 
 require_once($CFG->dirroot . '/'. $CFG->admin . '/roles/lib.php');
 
+// Definitions of state's notifications, to determine to who
+// send e-mails when database record enters a specific state.
+define('STATE_NOTIFY_NOBODY',     0);
+define('STATE_NOTIFY_CREATOR',    1);
+define('STATE_NOTIFY_SUPERVISOR', 2);
+define('STATE_NOTIFY_BOTH',       3);
+
 /**
  * Returns all workflow states in correct sort order.
  *
@@ -420,6 +427,60 @@ function data_workflow_allows_change($data, $courseid, $rid, $record = NULL) {
 
     // Check if changes are allowed
     return $records[$rid]->allowchange;
+}
+
+function send_workflow_state_notifications($user, $data, $cm, $record, $stateid) {
+    global $DB, $CFG;
+
+    // Abort if no record given
+    if (empty($record)) {
+        return;
+    }
+
+    // Check if workflow support is necessary
+    $hasworkflow = ($data->workflowenable > 0 && $data->workflowid > 0);
+    if ($hasworkflow) {
+        // Read workflow state from database
+        $wfstate = $DB->get_record('data_wf_states', array('id' => $stateid));
+
+        if (!empty($wfstate) && !empty($wfstate->notification)) {
+            $course = $DB->get_record('course', array('id' => $data->course));
+            $url = new moodle_url($CFG->wwwroot.'/mod/data/view.php',
+                array('d' => $data->id, 'rid' => $record->id));
+
+            // Prepare e-mail subject
+            $subject = get_string('statenotificationemailsubject', 'data', array(
+                'course' => $course->fullname,   // {$a->course} - name of the course
+                'db' => $data->name));           // {$a->db} - name of the database
+            // Prepare e-mail body
+            $body = get_string('statenotificationemailbody', 'data', array(
+                'user' => fullname($user),       // {$a->user} - name of the user (who makes the change)
+                'db' => $data->name,             // {$a->db} - name of the database
+                'state' => $wfstate->statename,  // {$a->state} - name of the workflow state
+                'url' => ''.$url));              // {$a->url} - URL pointing to the changed record
+
+            if (($wfstate->notification == STATE_NOTIFY_CREATOR) || ($wfstate->notification == STATE_NOTIFY_BOTH)) {
+                // Send notification to the creator of the record
+                $creator = $DB->get_record('user', array('id' => $record->userid));
+                if ($creator) {
+                    //echo "email_to_user() creator='$creator->username : $creator->firstname $creator->lastname : $creator->email".PHP_EOL;
+                    //echo "<br/>".$subject."<br/>".$body."<br/>".PHP_EOL;
+                    email_to_user($creator, generate_email_supportuser(), $subject, $body);
+                }
+            }
+
+            if (($wfstate->notification == STATE_NOTIFY_SUPERVISOR) || ($wfstate->notification == STATE_NOTIFY_BOTH)) {
+                // Send notification to workflow supervisor(s)
+                $context = get_context_instance(CONTEXT_MODULE, $cm->id);
+                $supervisors = get_enrolled_users($context, 'mod/data:superviseworkflow');
+                foreach ($supervisors as $recip) {
+                    //echo "email_to_user() supervisor='$recip->firstname $recip->lastname : $recip->email".PHP_EOL;
+                    //echo "<br/>".$subject."<br/>".$body."<br/>".PHP_EOL;
+                    email_to_user($recip, generate_email_supportuser(), $subject, $body);
+                }
+            }
+        }
+    }
 }
 
 /**

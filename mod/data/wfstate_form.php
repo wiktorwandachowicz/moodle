@@ -41,6 +41,14 @@ class stateedit_form extends moodleform {
         $mform->addRule('statedescr', get_string('required'), 'required', null, 'client');
         $mform->setType('statedescr', PARAM_TEXT);
 
+        $options = array(STATE_NOTIFY_NOBODY => get_string('notifynobody', 'data'),
+            STATE_NOTIFY_CREATOR => get_string('notifycreator', 'data'),
+            STATE_NOTIFY_BOTH => get_string('notifyboth', 'data'),
+            STATE_NOTIFY_SUPERVISOR => get_string('notifysupervisor', 'data'));
+        $mform->addElement('select', 'notification', get_string('statenotification', 'data'), $options);
+        $mform->addRule('notification', get_string('required'), 'required', null, 'client');
+
+        $mform->addHelpButton('notification', 'statenotification', 'data');
 
         $mform->addElement('hidden','id');
         $mform->setType('id', PARAM_INT);
