@@ -52,22 +52,6 @@ class actionedit_form extends moodleform {
         $mform->addElement('select','state', get_string('startstate', 'data'), $options);
         $mform->addElement('select','tostate', get_string('targetstate', 'data'), $options);
 
-/*
-        $mform->addElement('editor', 'description_editor', get_string('groupdescription', 'group'), null, $editoroptions);
-        $mform->setType('description_editor', PARAM_RAW);
-
-        $mform->addElement('passwordunmask', 'enrolmentkey', get_string('enrolmentkey', 'group'), 'maxlength="254" size="24"', get_string('enrolmentkey', 'group'));
-        $mform->addHelpButton('enrolmentkey', 'enrolmentkey', 'group');
-        $mform->setType('enrolmentkey', PARAM_RAW);
-
-        if (!empty($CFG->gdversion)) {
-            $options = array(get_string('no'), get_string('yes'));
-            $mform->addElement('select', 'hidepicture', get_string('hidepicture'), $options);
-
-            $mform->addElement('filepicker', 'imagefile', get_string('newpicture', 'group'));
-            $mform->addHelpButton('imagefile', 'newpicture', 'group');
-        }
-*/
         $mform->addElement('hidden','id');
         $mform->setType('id', PARAM_INT);
 
@@ -97,15 +81,6 @@ class actionedit_form extends moodleform {
                 //    $errors['actname'] = get_string('actionnameexists', 'data', $actname);
                 //}
             }
-/*
-            if (!empty($CFG->groupenrolmentkeypolicy) and $data['enrolmentkey'] != '' and $group->enrolmentkey !== $data['enrolmentkey']) {
-                // enforce password policy only if changing password
-                $errmsg = '';
-                if (!check_password_policy($data['enrolmentkey'], $errmsg)) {
-                    $errors['enrolmentkey'] = $errmsg;
-                }
-            }
-*/
         } else if (fetch_state_by_name($statename)) {
             $errors['statename'] = get_string('statenameexists', 'data', $statename);
         }

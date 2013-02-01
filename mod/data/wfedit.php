@@ -107,15 +107,6 @@ if ($id and $delete) {
 }
 
 $statecount = $DB->count_records('data_wf_states', array('wfid'=>$id));
-/*
-// Prepare the description editor: We do support files for group descriptions
-$editoroptions = array('maxfiles'=>EDITOR_UNLIMITED_FILES, 'maxbytes'=>$course->maxbytes, 'trust'=>false, 'context'=>$context, 'noclean'=>true);
-if (!empty($group->id)) {
-    $group = file_prepare_standard_editor($group, 'description', $editoroptions, $context, 'group', 'description', $group->id);
-} else {
-    $group = file_prepare_standard_editor($group, 'description', $editoroptions, $context, 'group', 'description', null);
-}
-*/
 $editoroptions = array('maxfiles'=>0, 'context'=>$context);
 $shortname = ($course ? $course->shortname : '');
 /// First create the form
