@@ -196,7 +196,7 @@ $PAGE->set_heading(($course ? $course->fullname.': ' : '') . $strheading);
 echo $OUTPUT->header();
 echo $OUTPUT->heading($strheading);
 
-echo '<div id="stateeditform">'.PHP_EOL;
+echo '<div id="actioneditform">'.PHP_EOL;
 $editform->display();
 echo '</div>'.PHP_EOL;
 

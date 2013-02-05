@@ -30,7 +30,7 @@ class actionedit_form extends moodleform {
 
         $mform->addElement('html', '<br/>');
 
-        $mform->addElement('text','actname', get_string('action', 'data'),'maxlength="254" size="80"');
+        $mform->addElement('text','actname', get_string('actionname', 'data'),'maxlength="254" size="80"');
         $mform->addRule('actname', get_string('required'), 'required', null, 'client');
         $mform->setType('actname', PARAM_TEXT);
 
@@ -77,9 +77,9 @@ class actionedit_form extends moodleform {
         $actname = trim($data['actname']);
         if ($data['id'] and $action = $DB->get_record('data_wf_actions', array('id'=>$data['id']))) {
             if ($textlib->strtolower($action->actname) != $textlib->strtolower($actname)) {
-                //if (fetch_ation_by_name($data['wfid'], $actname)) {
-                //    $errors['actname'] = get_string('actionnameexists', 'data', $actname);
-                //}
+                if (fetch_action_by_name($this->_customdata['wfid'], $actname, $data['state'])) {
+                    $errors['actname'] = get_string('actionnameexists', 'data', $actname);
+                }
             }
         } else if (fetch_state_by_name($statename)) {
             $errors['statename'] = get_string('statenameexists', 'data', $statename);

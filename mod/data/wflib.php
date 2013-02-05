@@ -86,6 +86,19 @@ function get_state_actions($stateid) {
 }
 
 /**
+ * Find and return action based on name.
+ *
+ * @param int $wfid database workflowid
+ * @param string $actionname action name
+ * @param int $stateid workflow start stateid
+ * @return object
+ */
+function fetch_action_by_name($wfid, $actname, $stateid) {
+    global $DB;
+    return $DB->get_record('data_wf_actions', array('wfid'=>$wfid, 'actname'=>$actname, 'fromstateid'=>$stateid));
+}
+
+/**
  * Returns target states for workflow state in correct sort order.
  *
  * @param int $stateid workflow stateid
