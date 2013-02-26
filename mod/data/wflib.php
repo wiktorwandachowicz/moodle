@@ -636,9 +636,11 @@ function wf_delete_workflow($wfid) {
 
     //get all states of deleted workflow (they will be deleted as well)
     $states = $DB->get_records('data_wf_states', array('wfid'=>$wfid), null, 'id');
-    $stateids = join(',', array_keys($states));
-    //clear state for records associated with states to be deleted
-    $DB->set_field_select('data_records', 'wfstateid', 0, "wfstateid IN ($stateids)");
+    if (count($states) > 0) {
+        $stateids = join(',', array_keys($states));
+        //clear state for records associated with states to be deleted
+        $DB->set_field_select('data_records', 'wfstateid', 0, "wfstateid IN ($stateids)");
+    }
 
     //disable workflow support in databases which used deleted workflow
     $DB->set_field('data', 'workflowenable', 0, array('workflowid'=>$wfid));

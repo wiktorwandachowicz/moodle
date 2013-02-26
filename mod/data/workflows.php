@@ -254,8 +254,10 @@ if ($mode == "wfdefinitions") {
     if ($options) {
         echo simple_html_select($options, 'wf', $wfid, array('size'=>'12', 'class'=>'select'));
     } else {
+        echo '<select name="wf" id="wf" size="12" class="select">'."\n";
         // Print an empty option to avoid the XHTML error of having an empty select element
-        echo '<option>&nbsp;</option>';
+        echo '<option>&nbsp;</option>'."\n";
+        echo '</select>'."\n";
     }
 
 #echo '</select>'."\n";
