@@ -526,7 +526,7 @@ function workflow_actions_form($dataid, $record) { //, $roles) {
             $html .= $OUTPUT->render($actionbutton);
         }
     } else {
-        $html .= '(unavailable in current state)';
+        $html .= '<div class="wfactionunavailable"><i>' . get_string('wfactionunavailable', 'data') . '</i></div>';
     }
 
     $html .= html_writer::end_tag('div');

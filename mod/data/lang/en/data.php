@@ -390,6 +390,7 @@ $string['usestandard_help'] = 'To use a preset available to the whole site, sele
 $string['viewfromdate'] = 'Read only from';
 $string['viewtodate'] = 'Read only to';
 $string['wfactions'] = 'Actions';
+$string['wfactionunavailable'] = '(unavailable in current state)';
 $string['wfallows'] = 'Allowed roles for states';
 $string['wfdefslist'] = 'List of defined workflows';
 $string['wfdefinitions'] = 'Definitions';
