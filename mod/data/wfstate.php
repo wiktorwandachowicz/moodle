@@ -133,7 +133,7 @@ $editoroptions = array('maxfiles'=>0, 'context'=>$context);
 $wfname = ($workflow ? $workflow->wfname : '');
 /// First create the form
 $editform = new stateedit_form(null, array('editoroptions'=>$editoroptions,
-    'stateid'=>$id, 'wfname'=>$wfname));
+    'wfid'=>$wfid, 'stateid'=>$id, 'wfname'=>$wfname));
 $editform->set_data($state);
 
 if ($editform->is_cancelled()) {

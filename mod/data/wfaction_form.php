@@ -81,8 +81,8 @@ class actionedit_form extends moodleform {
                     $errors['actname'] = get_string('actionnameexists', 'data', $actname);
                 }
             }
-        } else if (fetch_state_by_name($statename)) {
-            $errors['statename'] = get_string('statenameexists', 'data', $statename);
+        } else if (fetch_action_by_name($this->_customdata['wfid'], $actname, $data['state'])) {
+            $errors['actname'] = get_string('actionnameexists', 'data', $actname);
         }
 
         return $errors;

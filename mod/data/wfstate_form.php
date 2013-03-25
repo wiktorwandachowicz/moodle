@@ -75,11 +75,11 @@ class stateedit_form extends moodleform {
         $statename = trim($data['statename']);
         if ($data['id'] and $state = $DB->get_record('data_wf_states', array('id'=>$data['id']))) {
             if ($textlib->strtolower($state->statename) != $textlib->strtolower($statename)) {
-                if (fetch_state_by_name($statename)) {
+                if (fetch_state_by_name($this->_customdata['wfid'], $statename)) {
                     $errors['statename'] = get_string('statenameexists', 'data', $statename);
                 }
             }
-        } else if (fetch_state_by_name($statename)) {
+        } else if (fetch_state_by_name($this->_customdata['wfid'], $statename)) {
             $errors['statename'] = get_string('statenameexists', 'data', $statename);
         }
 

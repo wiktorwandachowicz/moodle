@@ -48,12 +48,13 @@ function get_all_states($wfid = null) {
 /**
  * Find and return state based on name.
  *
+ * @param int $wfid database workflowid
  * @param string $statename state name
  * @return object
  */
-function fetch_state_by_name($statename) {
+function fetch_state_by_name($wfid, $statename) {
     global $DB;
-    return $DB->get_record('data_wf_states', array('statename'=>$statename));
+    return $DB->get_record('data_wf_states', array('wfid'=>$wfid, 'statename'=>$statename));
 }
 
 /**
