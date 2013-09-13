@@ -149,6 +149,8 @@ switch ($mode) {
 
                 $field->field->name = $fieldinput->name;
                 $field->field->description = $fieldinput->description;
+                $field->field->private = !empty($fieldinput->private)?1:0;
+                $field->field->required = !empty($fieldinput->required)?1:0;
 
                 for ($i=1; $i<=10; $i++) {
                     if (isset($fieldinput->{'param'.$i})) {
@@ -273,7 +275,7 @@ if (($mode == 'new') && (!empty($newtype)) && confirm_sesskey()) {          /// 
     } else {    //else print quiz style list of fields
 
         $table = new html_table();
-        $table->head = array(get_string('fieldname','data'), get_string('type','data'), get_string('fielddescription', 'data'), get_string('action','data'));
+        $table->head = array(get_string('fieldname','data'), get_string('type','data'), get_string('private', 'data'), get_string('required', 'data'), get_string('fielddescription', 'data'), get_string('action','data'));
         $table->align = array('left','left','left', 'center');
         $table->wrap = array(false,false,false,false);
 
@@ -288,6 +290,10 @@ if (($mode == 'new') && (!empty($newtype)) && confirm_sesskey()) {          /// 
                 '&amp;fid='.$field->field->id.'&amp;sesskey='.sesskey().'">'.$field->field->name.'</a>',
 
                 $field->image().'&nbsp;'.get_string($field->type, 'data'),
+
+                (!empty($field->field->private)?get_string('yes'):get_string('no')),
+
+                (!empty($field->field->required)?get_string('yes'):get_string('no')),
 
                 shorten_text($field->field->description, 30),
 
