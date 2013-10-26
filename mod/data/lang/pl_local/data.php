@@ -48,6 +48,7 @@ $string['data:manageuserpresets'] = 'Zarządzaj wszystkimi ustawieniami wstępny
 $string['data:manageworkflows'] = 'Zarządzaj przepływami pracy';
 $string['data:superviseworkflow'] = 'Otrzymuj powiadomienia o zmianach stanu przepływu pracy dla wpisów bazy danych';
 $string['data:useworkflow'] = 'Zmieniaj stan przepływu pracy dla wpisów bazy danych';
+$string['data:viewallentries'] = 'Przeglądaj wpisy wszystkich użytkowników';
 $string['data:viewalluserpresets'] = 'Przeglądaj ustawienia wstępne wszystkich użytkowników';
 $string['date'] = 'Data';
 $string['dateentered'] = 'Data utworzenia';

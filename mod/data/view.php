@@ -489,6 +489,8 @@ if ($showactivity) {
 
     /// Check the number of entries required before to view other participant's entries against the number of entries already made (doesn't apply to teachers)
         $requiredentries_allowed = true;
+    /// Prevent viewing entries of other users without having 'viewallentries' capability
+        $requiredentries_allowed = has_capability('mod/data:viewallentries', $context);
         if ($data->requiredentriestoview > 0 && $numentries < $data->requiredentriestoview && !has_capability('mod/data:manageentries', $context)) {
             $data->entrieslefttoview = $data->requiredentriestoview - $numentries;
             $strentrieslefttoaddtoview = get_string('entrieslefttoaddtoview', 'data', $data);
