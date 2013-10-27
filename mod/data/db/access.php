@@ -54,7 +54,7 @@ $capabilities = array(
 
     'mod/data:viewallentries' => array(
 
-        'riskbitmask' => RISK_PERSONAL,
+        //'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
@@ -270,7 +270,7 @@ $capabilities = array(
 
     'mod/data:useworkflow' => array(
 
-        'riskbitmask' => RISK_PERSONAL,
+        //'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
@@ -295,7 +295,7 @@ $capabilities = array(
 
     'mod/data:superviseworkflow' => array(
 
-        'riskbitmask' => RISK_PERSONAL,
+        //'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
