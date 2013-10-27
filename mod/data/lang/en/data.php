@@ -211,6 +211,7 @@ $string['importsuccess'] = 'The preset has been successfully applied.';
 $string['includeapproval'] = 'Include approval status';
 $string['includetime'] = 'Include time added/modified';
 $string['includeuserdetails'] = 'Include user details';
+$string['includewfstate'] = 'Include workflow state';
 $string['incorrectstate'] = 'Incorrect state!';
 $string['initstate'] = 'Initial state';
 $string['insufficiententries'] = 'more entries needed to view this database';

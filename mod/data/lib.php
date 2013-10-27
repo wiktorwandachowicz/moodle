@@ -2771,11 +2771,13 @@ function data_export_ods($export, $dataname, $count) {
  * @param bool $userdetails whether to include the details of the record author
  * @param bool $time whether to include time created/modified
  * @param bool $approval whether to include approval status
+ * @param bool $wfstate whether to include workflow state
  * @return array
  */
 function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0, $context=null,
-                             $userdetails=false, $time=false, $approval=false) {
+                             $userdetails=false, $time=false, $approval=false, $wfstate=false) {
     global $DB;
+    static $remove_new_line = array("\r\n", "\n", "\r");
 
     if (is_null($context)) {
         $context = context_system::instance();
@@ -2806,8 +2808,16 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
     if ($approval) {
         $exportdata[0][] = get_string('approved', 'data');
     }
+    if ($wfstate) {
+        $exportdata[0][] = get_string('state', 'data');
+    }
 
-    $datarecords = $DB->get_records('data_records', array('dataid'=>$dataid));
+    if ($wfstate) {
+        $datarecords = $DB->get_records_sql('SELECT r.*, s.statename FROM {data_records} r LEFT JOIN {data_wf_states} s ON s.id = r.wfstateid WHERE r.dataid = ?', array($dataid));
+    } else {
+        $datarecords = $DB->get_records('data_records', array('dataid'=>$dataid));
+    }
+
     ksort($datarecords);
     $line = 1;
     foreach($datarecords as $record) {
@@ -2825,6 +2835,8 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
                 $contents = '';
                 if(isset($content[$field->field->id])) {
                     $contents = $field->export_text_value($content[$field->field->id]);
+                    $contents = strip_tags($contents);
+                    $contents = str_replace($remove_new_line, ' ', $contents);
                 }
                 $exportdata[$line][] = $contents;
             }
@@ -2840,6 +2852,9 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
             }
             if ($approval) { // Add approval status
                 $exportdata[$line][] = (int) $record->approved;
+            }
+            if ($wfstate) { // Add workflow state
+                $exportdata[$line][] = $record->statename;
             }
         }
         $line++;

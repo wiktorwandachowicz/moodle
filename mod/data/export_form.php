@@ -66,6 +66,9 @@ class mod_data_export_form extends moodleform {
         if ($this->_data->approval) {
             $mform->addElement('checkbox', 'exportapproval', get_string('includeapproval', 'data'));
         }
+        $mform->addElement('hidden', 'wfenable', $this->_data->workflowenable);
+        $mform->addElement('checkbox', 'exportwfstate', get_string('includewfstate', 'data'));
+        $mform->disabledIf('exportwfstate', 'wfenable', 'neq', 1);
         $this->add_action_buttons(true, get_string('exportentries', 'data'));
     }
 
