@@ -30,6 +30,7 @@ define ('DATA_LASTNAME', -2);
 define ('DATA_APPROVED', -3);
 define ('DATA_TIMEADDED', 0);
 define ('DATA_TIMEMODIFIED', -4);
+define ('DATA_WORKFLOWSTATE', -5);
 
 define ('DATA_CAP_EXPORT', 'mod/data:viewalluserpresets');
 
@@ -518,15 +519,33 @@ function data_generate_default_template(&$data, $template, $recordid=0, $form=fa
             );
         }
         if ($template == 'listtemplate') {
-            $cell = new html_table_cell('##edit##  ##more##  ##delete##  ##approve##  ##export##');
-            $cell->colspan = 2;
-            $cell->attributes['class'] = 'controls';
-            $table->data[] = new html_table_row(array($cell));
+            if ($data->workflowenable) {
+                $cell = new html_table_cell(get_string('state', 'data').': ');
+                $cell2 = new html_table_cell('##state##');
+                $table->data[] = new html_table_row(array($cell, $cell2));
+                $cell = new html_table_cell('##edit##  ##more##  ##delete##  ##approve##  ##export##');
+                $cell2 = new html_table_cell('##workflow##');
+                $table->data[] = new html_table_row(array($cell, $cell2));
+            } else {
+                $cell = new html_table_cell('##edit##  ##more##  ##delete##  ##approve##  ##export##');
+                $cell->colspan = 2;
+                $cell->attributes['class'] = 'controls';
+                $table->data[] = new html_table_row(array($cell));
+            }
         } else if ($template == 'singletemplate') {
-            $cell = new html_table_cell('##edit##  ##delete##  ##approve##  ##export##');
-            $cell->colspan = 2;
-            $cell->attributes['class'] = 'controls';
-            $table->data[] = new html_table_row(array($cell));
+            if ($data->workflowenable) {
+                $cell = new html_table_cell(get_string('state', 'data').': ');
+                $cell2 = new html_table_cell('##state##');
+                $table->data[] = new html_table_row(array($cell, $cell2));
+                $cell = new html_table_cell('##edit##  ##delete##  ##approve##  ##export##');
+                $cell2 = new html_table_cell('##workflow##');
+                $table->data[] = new html_table_row(array($cell, $cell2));
+            } else {
+                $cell = new html_table_cell('##edit##  ##delete##  ##approve##  ##export##');
+                $cell->colspan = 2;
+                $cell->attributes['class'] = 'controls';
+                $table->data[] = new html_table_row(array($cell));
+            }
         } else if ($template == 'asearchtemplate') {
             $row = new html_table_row(array(get_string('authorfirstname', 'data').': ', '##firstname##'));
             $row->attributes['class'] = 'searchcontrols';
@@ -534,6 +553,11 @@ function data_generate_default_template(&$data, $template, $recordid=0, $form=fa
             $row = new html_table_row(array(get_string('authorlastname', 'data').': ', '##lastname##'));
             $row->attributes['class'] = 'searchcontrols';
             $table->data[] = $row;
+            if ($data->workflowenable) {
+                $row = new html_table_row(array(get_string('state', 'data').': ', '##state##'));
+                $row->attributes['class'] = 'searchcontrols';
+                $table->data[] = $row;
+            }
         }
 
         $str  = html_writer::start_tag('div', array('class' => 'defaulttemplate'));
@@ -1542,6 +1566,9 @@ function data_print_preference_form($data, $perpage, $search, $sort='', $order='
     $options[DATA_TIMEMODIFIED] = get_string('timemodified', 'data');
     $options[DATA_FIRSTNAME]    = get_string('authorfirstname', 'data');
     $options[DATA_LASTNAME]     = get_string('authorlastname', 'data');
+    if ($data->workflowenable) {
+        $options[DATA_WORKFLOWSTATE] = get_string('state', 'data');
+    }
     if ($data->approval and has_capability('mod/data:approve', $context)) {
         $options[DATA_APPROVED] = get_string('approved', 'data');
     }
@@ -1632,10 +1659,24 @@ function data_print_preference_form($data, $perpage, $search, $sort='', $order='
     }
     $fn = !empty($search_array[DATA_FIRSTNAME]->data) ? $search_array[DATA_FIRSTNAME]->data : '';
     $ln = !empty($search_array[DATA_LASTNAME]->data) ? $search_array[DATA_LASTNAME]->data : '';
+    $wfs = !empty($search_array[DATA_WORKFLOWSTATE]->data) ? $search_array[DATA_WORKFLOWSTATE]->data : '';
     $patterns[]    = '/##firstname##/';
     $replacement[] = '<label class="accesshide" for="u_fn">'.get_string('authorfirstname', 'data').'</label><input type="text" size="16" id="u_fn" name="u_fn" value="'.$fn.'" />';
     $patterns[]    = '/##lastname##/';
     $replacement[] = '<label class="accesshide" for="u_ln">'.get_string('authorlastname', 'data').'</label><input type="text" size="16" id="u_ln" name="u_ln" value="'.$ln.'" />';
+
+    $wfs_select = '<select size="1" id="wfs" name="wfs" value="'.$wfs.'">'."\n";
+    $wfs_select .= '<option value="0"></option>'."\n";
+    if ($data->workflowenable) {
+        $states = $DB->get_records('data_wf_states', array('wfid'=>$data->workflowid));
+        foreach ($states as $state) {
+            $selected = ($state->id == $wfs) ? ' selected' : '';
+            $wfs_select .= '<option value="'.$state->id.'"'.$selected.'>'.$state->statename.'</option>'."\n";
+        }
+    }
+    $wfs_select .= '</select>';
+    $patterns[]    = '/##state##/';
+    $replacement[] = '<label class="accesshide" for="wfs">'.get_string('state', 'data').'</label>'.$wfs_select;
 
     // actual replacement of the tags
     $newtext = preg_replace($patterns, $replacement, $data->asearchtemplate);
@@ -3593,11 +3634,11 @@ function data_get_recordids($alias, $searcharray, $dataid, $recordids) {
 function data_get_advanced_search_sql($sort, $data, $recordids, $selectdata, $sortorder) {
     global $DB;
     if ($sort == 0) {
-        $nestselectsql = 'SELECT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname
+        $nestselectsql = 'SELECT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, r.wfstateid
                         FROM {data_content} c,
                              {data_records} r,
                              {user} u ';
-        $groupsql = ' GROUP BY r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname ';
+        $groupsql = ' GROUP BY r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, r.wfstateid ';
     } else {
         // Sorting through 'Other' criteria
         if ($sort <= 0) {
@@ -3607,6 +3648,9 @@ function data_get_advanced_search_sql($sort, $data, $recordids, $selectdata, $so
                     break;
                 case DATA_FIRSTNAME:
                     $sortcontentfull = "u.firstname";
+                    break;
+                case DATA_WORKFLOWSTATE:
+                    $sortcontentfull = "r.wfstateid";
                     break;
                 case DATA_APPROVED:
                     $sortcontentfull = "r.approved";
@@ -3624,12 +3668,12 @@ function data_get_advanced_search_sql($sort, $data, $recordids, $selectdata, $so
             $sortcontentfull = $sortfield->get_sort_sql($sortcontent);
         }
 
-        $nestselectsql = 'SELECT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, ' . $sortcontentfull . '
+        $nestselectsql = 'SELECT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, r.wfstateid, ' . $sortcontentfull . '
                               AS sortorder
                             FROM {data_content} c,
                                  {data_records} r,
                                  {user} u ';
-        $groupsql = ' GROUP BY r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, ' .$sortcontentfull;
+        $groupsql = ' GROUP BY r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, r.wfstateid, ' .$sortcontentfull;
     }
 
     // Default to a standard Where statement if $selectdata is empty.

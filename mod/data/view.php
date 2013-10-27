@@ -185,9 +185,11 @@
             // name searching
             $fn = optional_param('u_fn', '', PARAM_NOTAGS);
             $ln = optional_param('u_ln', '', PARAM_NOTAGS);
+            $wfs = optional_param('wfs', '', PARAM_NOTAGS);
         } else {
             $fn = isset($search_array[DATA_FIRSTNAME]) ? $search_array[DATA_FIRSTNAME]->data : '';
             $ln = isset($search_array[DATA_LASTNAME]) ? $search_array[DATA_LASTNAME]->data : '';
+            $wfs = isset($search_array[DATA_WORKFLOWSTATE]) ? $search_array[DATA_WORKFLOWSTATE]->data : '';
         }
         if (!empty($fn)) {
             $search_array[DATA_FIRSTNAME] = new stdClass();
@@ -208,6 +210,16 @@
             $vals[] = $ln;
         } else {
             unset($search_array[DATA_LASTNAME]);
+        }
+        if (!empty($wfs)) {
+            $search_array[DATA_WORKFLOWSTATE] = new stdClass();
+            $search_array[DATA_WORKFLOWSTATE]->sql    = '';
+            $search_array[DATA_WORKFLOWSTATE]->params = array();
+            $search_array[DATA_WORKFLOWSTATE]->field  = 'r.wfstateid';
+            $search_array[DATA_WORKFLOWSTATE]->data   = $wfs;
+            $vals[] = $ln;
+        } else {
+            unset($search_array[DATA_WORKFLOWSTATE]);
         }
 
         $SESSION->dataprefs[$data->id]['search_array'] = $search_array;     // Make it sticky
