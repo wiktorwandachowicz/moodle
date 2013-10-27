@@ -274,6 +274,9 @@ if ($mode != 'csstemplate' and $mode != 'jstemplate') {
         echo '<optgroup label="'.get_string('other', 'data').'">';
         echo '<option value="##firstname##">' .get_string('authorfirstname', 'data'). ' - ##firstname##</option>';
         echo '<option value="##lastname##">' .get_string('authorlastname', 'data'). ' - ##lastname##</option>';
+        if ($data->workflowenable) {
+            echo '<option value="##state##">' .get_string('state', 'data'). ' - ##state##</option>';
+        }
         echo '</optgroup>';
     }
 
