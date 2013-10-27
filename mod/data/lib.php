@@ -796,6 +796,7 @@ function data_add_record($data, $groupid=0){
     } else {
         $record->approved = 0;
     }
+    $record->wfstateid = $data->wfstateid;
     return $DB->insert_record('data_records', $record);
 }
 
@@ -874,6 +875,10 @@ function data_update_instance($data) {
 
     if (empty($data->notification)) {
         $data->notification = 0;
+    }
+
+    if (empty($data->workflowenable)) {
+        $data->workflowenable = 0;
     }
 
     $DB->update_record('data', $data);
@@ -1159,7 +1164,7 @@ function data_grade_item_delete($data) {
  * @return mixed
  */
 function data_print_template($template, $records, $data, $search='', $page=0, $return=false) {
-    global $CFG, $DB, $OUTPUT;
+    global $CFG, $DB, $OUTPUT, $PAGE;
     $cm = get_coursemodule_from_instance('data', $data->id);
     $context = context_module::instance($cm->id);
 
@@ -1185,6 +1190,9 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
         return;
     }
 
+    // Check if workflow is enabled for this database
+    $hasworkflow = ($data->workflowenable > 0 && $data->workflowid > 0);
+
     // Check whether this activity is read-only at present
     $readonly = data_in_readonly_period($data);
 
@@ -1200,10 +1208,13 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
             $replacement[] = highlight($search, $field->display_browse_field($record->id, $template));
         }
 
+    // Check if editing and state change is allowed
+        $allowchange = (!$hasworkflow || $record->allowchange);
+
     // Replacing special tags (##Edit##, ##Delete##, ##More##)
         $patterns[]='##edit##';
         $patterns[]='##delete##';
-        if (has_capability('mod/data:manageentries', $context) || (!$readonly && data_isowner($record->id))) {
+        if ($allowchange && (has_capability('mod/data:manageentries', $context) || (!$readonly && data_isowner($record->id)))) {
             $replacement[] = '<a href="'.$CFG->wwwroot.'/mod/data/edit.php?d='
                              .$data->id.'&amp;rid='.$record->id.'&amp;sesskey='.sesskey().'"><img src="'.$OUTPUT->pix_url('t/edit') . '" class="iconsmall" alt="'.get_string('edit').'" title="'.get_string('edit').'" /></a>';
             $replacement[] = '<a href="'.$CFG->wwwroot.'/mod/data/view.php?d='
@@ -1224,6 +1235,22 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
 
         $patterns[]='##moreurl##';
         $replacement[] = $moreurl;
+
+    // Replacing workflow tags (##State##, ##Workflow##)
+        $patterns[]='##state##';
+        $patterns[]='##workflow##';
+        if ($hasworkflow) {
+            require_once('wflib.php');
+            $replacement[] = '<span class="wfstate">'. $record->statename.(empty($record->statedescr) ? '' : ' - '.$record->statedescr) .'</span>';
+            if ($record->allowchange) {
+                $replacement[] = workflow_actions_form($data->id, $record);
+            } else {
+                $replacement[] = $record->showactions ? workflow_actions_form(0, $record) : '';
+            }
+        } else {
+            $replacement[] = '';
+            $replacement[] = '';
+        }
 
         $patterns[]='##user##';
         $replacement[] = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$record->userid.
@@ -3087,6 +3114,10 @@ function data_extend_settings_navigation(settings_navigation $settings, navigati
 
         $datanode->add(get_string('fields', 'data'), new moodle_url('/mod/data/field.php', array('d'=>$data->id)));
         $datanode->add(get_string('presets', 'data'), new moodle_url('/mod/data/preset.php', array('d'=>$data->id)));
+    }
+
+    if (has_capability('mod/data:manageworkflows', $PAGE->cm->context)) {
+        $datanode->add(get_string('workflows', 'data'), new moodle_url('/mod/data/workflows.php', array('d'=>$data->id)));
     }
 
     if (!empty($CFG->enablerssfeeds) && !empty($CFG->data_enablerssfeeds) && $data->rssarticles > 0) {

@@ -252,6 +252,12 @@ if ($mode != 'csstemplate' and $mode != 'jstemplate') {
             echo '<option value="##more##">' .get_string('more', 'data'). ' - ##more##</option>';
             echo '<option value="##moreurl##">' .get_string('moreurl', 'data'). ' - ##moreurl##</option>';
         }
+        //if ($mode != 'rsstemplate') {
+            // workflow state
+            echo '<option value="##state##">' .get_string('state', 'data'). ' - ##state##</option>';
+            // workflow controls
+            echo '<option value="##workflow##">' .get_string('workflow', 'data'). ' - ##workflow##</option>';
+        //}
         echo '</optgroup>';
         echo '<optgroup label="'.get_string('other', 'data').'">';
         echo '<option value="##timeadded##">'.get_string('timeadded', 'data'). ' - ##timeadded##</option>';

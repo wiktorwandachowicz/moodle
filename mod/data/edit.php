@@ -109,6 +109,12 @@ if (!has_capability('mod/data:manageentries', $context)) {
         if (!data_isowner($rid) || data_in_readonly_period($data)) {
             print_error('noaccess','data');
         }
+
+        require_once('wflib.php');
+        /// Check if record edit is allowed
+        if (!data_workflow_allows_change($data, $course->id, $rid)) {
+            print_error('noedit', 'data');
+        }
     } else if (!data_user_can_add_entry($data, $currentgroup, $groupmode, $context)) {
         // User is trying to create a new record
         print_error('noaccess','data');
@@ -168,6 +174,14 @@ if ($datarecord = data_submitted() and confirm_sesskey()) {
             $record->approved = 0;
         }
 
+        /// Check if workflow is enabled for this database
+        $hasworkflow = ($data->workflowenable > 0 && $data->workflowid > 0);
+        if ($hasworkflow && empty($data->wfstateid)) {
+            require_once('wflib.php');
+            /// Set initial state for updated record
+            $record->wfstateid = get_initial_workflow_state($data->workflowid);
+        }
+
         $record->groupid = $currentgroup;
         $record->timemodified = time();
         $DB->update_record('data_records', $record);
@@ -210,6 +224,17 @@ if ($datarecord = data_submitted() and confirm_sesskey()) {
 
         if ($emptyform){    //nothing gets written to database
             echo $OUTPUT->notification(get_string('emptyaddform','data'));
+        }
+
+        /// Check if workflow is enabled for this database
+        $hasworkflow = ($data->workflowenable > 0 && $data->workflowid > 0);
+        if ($hasworkflow) {
+            require_once('wflib.php');
+            /// Set initial state for new record
+            $data->wfstateid = get_initial_workflow_state($data->workflowid);
+        } else {
+            /// Do not use workflow
+            $data->wfstateid = 0;
         }
 
         if (!$emptyform && $recordid = data_add_record($data, $currentgroup)) {    //add instance to data_record

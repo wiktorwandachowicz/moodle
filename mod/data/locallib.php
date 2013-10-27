@@ -309,11 +309,15 @@ class data_portfolio_caller extends portfolio_module_caller_base {
         $patterns[]='##export##';
         $patterns[]='##more##';
         $patterns[]='##moreurl##';
+        $patterns[]='##state##';
+        $patterns[]='##workflow##';
         $patterns[]='##user##';
         $patterns[]='##approve##';
         $patterns[]='##comments##';
         $patterns[] = '##timeadded##';
         $patterns[] = '##timemodified##';
+        $replacement[] = '';
+        $replacement[] = '';
         $replacement[] = '';
         $replacement[] = '';
         $replacement[] = '';

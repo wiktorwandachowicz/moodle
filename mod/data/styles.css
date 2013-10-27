@@ -67,3 +67,13 @@
 .dir-rtl .mod-data-default-template .template-field {text-align:left;}
 .dir-rtl .mod-data-default-template .template-token {text-align:right;}
 .dir-rtl .mod-data-default-template searchcontrols {text-align:left;}
+
+/** Workflow **/
+#page-mod-data-workflows .generalbox {
+    margin: 0 auto 1em;
+    padding: 10px;
+}
+
+.wfaction {white-space:nowrap;}
+
+#page-mod-data-wfedit #workfloweditform_ {text-align: center;}

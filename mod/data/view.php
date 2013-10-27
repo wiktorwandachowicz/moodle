@@ -40,6 +40,7 @@
 /// These can be added to perform an action on a record
     $approve = optional_param('approve', 0, PARAM_INT);    //approval recordid
     $delete = optional_param('delete', 0, PARAM_INT);    //delete recordid
+    $stateid = optional_param('stateid', 0, PARAM_INT);    //workflow state for record
 
     if ($id) {
         if (! $cm = get_coursemodule_from_id('data', $id)) {
@@ -383,9 +384,18 @@
         } else {   // Print a confirmation page
             if ($deleterecord = $DB->get_record('data_records', array('id'=>$delete))) {   // Need to check this is valid
                 if ($deleterecord->dataid == $data->id) {                       // Must be from this database
+                    require_once('wflib.php');
+                    /// Check if record delete is allowed
+                    if (!data_workflow_allows_change($data, $course->id, $delete, $deleterecord)) {
+                        print_error('nodelete', 'data');
+                    }
+
                     $deletebutton = new single_button(new moodle_url('/mod/data/view.php?d='.$data->id.'&delete='.$delete.'&confirm=1'), get_string('delete'), 'post');
                     echo $OUTPUT->confirm(get_string('confirmdeleterecord','data'),
                             $deletebutton, 'view.php?d='.$data->id);
+
+                    //$deleterecord->allowchange = false;  // Do not show edit actions
+                    //$deleterecord->showactions = false;  // Do not show workflow state change buttons
 
                     $records[] = $deleterecord;
                     echo data_print_template('singletemplate', $records, $data, '', 0, true);
@@ -397,6 +407,30 @@
         }
     }
 
+/// Update workflow state for record if requested
+    if ($stateid && confirm_sesskey()) {
+
+        if ($rid) {                                          /// Update some records
+
+            if ($changerecord = $DB->get_record('data_records', array('id'=>$rid))) {   // Need to check this is valid
+                if ($changerecord->dataid = $data->id) {                     // Must be from this database
+                    require_once('wflib.php');
+                    /// Check if state change is allowed
+                    if (!data_workflow_allows_change($data, $course->id, $rid, $changerecord)) {
+                        print_error('nostatechange', 'data');
+                    }
+                    if ($record->wfstateid != $stateid) {
+                        //echo "<h3>Set workflow state ($stateid) for record ($rid)</h3>";
+                        $record->groupid = $currentgroup;
+                        $record->timemodified = time();
+                        $record->wfstateid = $stateid;
+                        $DB->update_record('data_records', $record);
+                        send_workflow_state_notifications($USER, $data, $cm, $record, $stateid);
+                    }
+                }
+            }
+        }
+    }
 
 //if data activity closed dont let students in
 $showactivity = true;
@@ -521,7 +555,7 @@ if ($showactivity) {
                     $ordering = "r.timecreated $order";
             }
 
-            $what = ' DISTINCT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname';
+            $what = ' DISTINCT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, r.wfstateid';
             $count = ' COUNT(DISTINCT c.recordid) ';
             $tables = '{data_content} c,{data_records} r, {user} u ';
             $where =  'WHERE c.recordid = r.id
@@ -538,6 +572,13 @@ if ($showactivity) {
                 $params['myid2'] = $USER->id;
                 $initialparams['myid3'] = $params['myid2'];
             }
+
+            // Extra fields if workflow support is necessary
+/*            if ($data->workflowenable > 0 && $data->workflowid > 0) {
+                $what .= ', r.wfstateid';
+                $tables .= ', {data_wf_states} s ';
+                $where .= ' AND r.wfstateid = s.id';
+            } */
 
             if (!empty($advanced)) {                                                  //If advanced box is checked.
                 $i = 0;
@@ -567,7 +608,7 @@ if ($showactivity) {
             $sortcontent = $DB->sql_compare_text('c.' . $sortfield->get_sort_field());
             $sortcontentfull = $sortfield->get_sort_sql($sortcontent);
 
-            $what = ' DISTINCT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, ' . $sortcontentfull . ' AS sortorder ';
+            $what = ' DISTINCT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, r.wfstateid, ' . $sortcontentfull . ' AS sortorder ';
             $count = ' COUNT(DISTINCT c.recordid) ';
             $tables = '{data_content} c, {data_records} r, {user} u ';
             $where =  'WHERE c.recordid = r.id
@@ -683,6 +724,15 @@ if ($showactivity) {
             }
 
         } else { //  We have some records to print
+
+            require_once('wflib.php');
+
+            // Check if workflow support is necessary
+            if ($data->workflowenable > 0 && $data->workflowid > 0) {
+                set_records_allowed_actions($course->id, $records, $data->workflowid);
+            } else {
+                set_records_no_actions($records);
+            }
 
             if ($maxcount != $totalcount) {
                 $a = new stdClass();

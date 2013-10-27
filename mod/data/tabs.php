@@ -75,6 +75,11 @@
             $row[] = new tabobject('presets', new moodle_url('/mod/data/preset.php', array('d' => $data->id)),
                          get_string('presets', 'data'));
         }
+        if (has_capability('mod/data:manageworkflows', $context)) {
+            $workflowstab = new tabobject('workflows', new moodle_url('/mod/data/workflows.php', array('d' => $data->id)),
+                         get_string('workflows', 'data'));
+            $row[] = $workflowstab;
+        }
     }
 
     if ($currenttab == 'templates' and isset($mode) && isset($templatestab)) {
@@ -90,6 +95,23 @@
         }
         if ($currenttab == '') {
             $currenttab = $mode = 'singletemplate';
+        }
+    }
+
+    if ($currenttab == 'workflows' and isset($mode) && isset($workflowstab)) {
+        $workflowstab->inactive = true;
+        $actionlist = array ('wfdefinitions', 'wfactions', 'wfallows');
+        $wf = empty($wfid) ? array() : array('wf' => $wfid);
+
+        $currenttab = '';
+        foreach ($actionlist as $action) {
+            $workflowstab->subtree[] = new tabobject($action, new moodle_url('/mod/data/workflows.php', array_merge(array('d' => $data->id, 'mode' => $action), $wf)), get_string($action, 'data'));
+            if ($action == $mode) {
+                $currenttab = $action;
+            }
+        }
+        if ($currenttab == '') {
+            $currenttab = $mode = 'wfdefinitions';
         }
     }
 

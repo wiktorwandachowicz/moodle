@@ -127,8 +127,144 @@ function xmldb_data_upgrade($oldversion) {
     // Moodle v2.5.0 release upgrade line.
     // Put any upgrade step following this.
 
+    if ($oldversion < 2013071500) {
+
+        // Extend structure of data
+        $table = new xmldb_table('data');
+
+        // Define field workflowenable to be added to data
+        $field = new xmldb_field('workflowenable', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0', 'notification');
+        // Conditionally launch add field workflowenable
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field workflowid to be added to data
+        $field = new xmldb_field('workflowid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'workflowenable');
+        // Conditionally launch add field workflowid
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+
+        // Extend structure of data_records
+        $table = new xmldb_table('data_records');
+
+        // Define field wfstateid to be added to data_records
+        $field = new xmldb_field('wfstateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'approved');
+        // Conditionally launch add field wfstateid
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define key dataid (foreign) to be added to data_records
+        $key = new xmldb_key('dataid', XMLDB_KEY_FOREIGN, array('dataid'), 'data', array('id'));
+        // Launch add key dataid
+        $dbman->add_key($table, $key);
+
+
+        // Define table data_wf to be created
+        $table = new xmldb_table('data_wf');
+
+        // Adding fields to table data_wf
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('wfname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('initstateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table data_wf
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally launch create table for data_wf
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+
+        // Define table data_wf_states to be created
+        $table = new xmldb_table('data_wf_states');
+
+        // Adding fields to table data_wf_states
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('wfid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('statename', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('statedescr', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table data_wf_states
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('wfid', XMLDB_KEY_FOREIGN, array('wfid'), 'data_wf', array('id'));
+
+        // Conditionally launch create table for data_wf_states
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+
+        // Define table data_wf_actions to be created
+        $table = new xmldb_table('data_wf_actions');
+
+        // Adding fields to table data_wf_actions
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('wfid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('fromstateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('tostateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('actname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('actdescr', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table data_wf_actions
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('wfid', XMLDB_KEY_FOREIGN, array('wfid'), 'data_wf', array('id'));
+        $table->add_key('fromstateid', XMLDB_KEY_FOREIGN, array('fromstateid'), 'data_wf_states', array('id'));
+        $table->add_key('tostateid', XMLDB_KEY_FOREIGN, array('tostateid'), 'data_wf_states', array('id'));
+
+        // Conditionally launch create table for data_wf_actions
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+
+        // Define table data_wf_state_role_allow to be created
+        $table = new xmldb_table('data_wf_state_role_allow');
+
+        // Adding fields to table data_wf_state_role_allow
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('wfid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('roleid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('allowstateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table data_wf_state_role_allow
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('wfid', XMLDB_KEY_FOREIGN, array('wfid'), 'data_wf', array('id'));
+        $table->add_key('allowstateid', XMLDB_KEY_FOREIGN, array('allowstateid'), 'data_wf_states', array('id'));
+
+        // Adding indexes to table data_wf_state_role_allow
+        $table->add_index('wfstateroleallow', XMLDB_INDEX_NOTUNIQUE, array('wfid', 'allowstateid'));
+
+        // Conditionally launch create table for data_wf_state_role_allow
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // data savepoint reached
+        upgrade_mod_savepoint(true, 2013071500, 'data');
+    }
+
+    if ($oldversion < 2013071600) {
+
+        // Extend structure of data_wf_states
+        $table = new xmldb_table('data_wf_states');
+
+        // Define field notification to be added to data_wf_states
+        $field = new xmldb_field('notification', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '1', 'statedescr');
+
+        // Conditionally launch add field notification
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // data savepoint reached
+        upgrade_mod_savepoint(true, 2013071600, 'data');
+    }
 
     return true;
 }
-
-

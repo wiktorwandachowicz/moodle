@@ -4,8 +4,20 @@ if (!defined('MOODLE_INTERNAL')) {
 }
 
 require_once ($CFG->dirroot.'/course/moodleform_mod.php');
+require_once ('wflib.php');
 
 class mod_data_mod_form extends moodleform_mod {
+
+    /** @var object the course this instance is part of */
+    protected $course = null;
+
+    /**
+     * Constructor
+     */
+    public function __construct($current, $section, $cm, $course) {
+        $this->course = $course;
+        parent::__construct($current, $section, $cm, $course);
+    }
 
     function definition() {
         global $CFG, $DB;
@@ -62,6 +74,15 @@ class mod_data_mod_form extends moodleform_mod {
             $mform->addElement('header', 'rsshdr', get_string('rss'));
             $mform->addElement('select', 'rssarticles', get_string('numberrssarticles', 'data') , $countoptions);
         }
+
+        // ----------------------------------------------------------------------
+        $mform->addElement('header', 'workflowhdr', get_string('workflow', 'data'));
+
+        $mform->addElement('checkbox', 'workflowenable', get_string('workflowenable', 'data'));
+
+        $wfoptions = array(0=>get_string('none')) + get_workflow_options($this->course->id);
+        $mform->addElement('select', 'workflowid', get_string('workflow', 'data'), $wfoptions);
+        $mform->disabledIf('workflowid', 'workflowenable');
 
         $this->standard_grading_coursemodule_elements();
 
