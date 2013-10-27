@@ -561,6 +561,9 @@ if ($showactivity) {
                 case DATA_APPROVED:
                     $ordering = "r.approved $order, r.timecreated $order";
                     break;
+                case DATA_WORKFLOWSTATE:
+                    $ordering = "r.wfstateid $order";
+                    break;
                 case DATA_TIMEMODIFIED:
                     $ordering = "r.timemodified $order";
                     break;
