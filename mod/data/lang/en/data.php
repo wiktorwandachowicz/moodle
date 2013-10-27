@@ -98,6 +98,7 @@ $string['data:managetemplates'] = 'Manage templates';
 $string['data:manageuserpresets'] = 'Manage all template presets';
 $string['data:rate'] = 'Rate entries';
 $string['data:readentry'] = 'Read entries';
+$string['data:viewallentries'] = 'View entries of all users';
 $string['data:viewalluserpresets'] = 'View presets from all users';
 $string['data:viewallratings'] = 'View all raw ratings given by individuals';
 $string['data:viewanyrating'] = 'View total ratings that anyone received';

@@ -52,6 +52,22 @@ $capabilities = array(
         )
     ),
 
+    'mod/data:viewallentries' => array(
+
+        'riskbitmask' => RISK_PERSONAL,
+
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'frontpage' => CAP_ALLOW, // needed for databases on the frontpage
+            'guest' => CAP_ALLOW,
+            'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        )
+    ),
+
     'mod/data:writeentry' => array(
 
         'riskbitmask' => RISK_SPAM,
