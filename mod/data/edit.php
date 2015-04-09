@@ -153,10 +153,78 @@ $PAGE->set_title($data->name);
 $PAGE->set_heading($course->fullname);
 
 /// Process incoming data for adding/updating records
+$notifications = array();
 
 if ($datarecord = data_submitted() and confirm_sesskey()) {
 
     $ignorenames = array('MAX_FILE_SIZE','sesskey','d','rid','saveandview','cancel');  // strings to be ignored in input data
+    $fields = $DB->get_records('data_fields', array('dataid'=>$data->id));
+
+    ///Empty form checking - you can't submit an empty form!
+
+    $emptyform = true;      // assume the worst
+
+    foreach ($datarecord as $name => $value) {
+        if (!in_array($name, $ignorenames)) {
+            $namearr = explode('_', $name);  // Second one is the field id
+            if (empty($field->field) || ($namearr[1] != $field->field->id)) {  // Try to reuse classes
+                $field = data_get_field_from_id($namearr[1], $data);
+            }
+            if ($field->notemptyfield($value, $name)) {
+                $emptyform = false;
+                break;             // if anything has content, this form is not empty, so stop now!
+            }
+        }
+    }
+
+    // Required field form checking.
+
+    $hasrequiredfields = true;      // assume the best
+
+    foreach ($fields as $fieldrecord) {
+        if (!empty($fieldrecord->required)) {
+            $field = data_get_field($fieldrecord, $data);
+            if ($field->field->private && !has_capability('mod/data:editprivatefields', $context) &&
+                !(has_capability('mod/data:editownprivatefields', $context) && (!$rid || data_isowner($rid)))) {
+                // don't make a field required if we can't edit it
+                continue;
+            }
+            if ($field->field->required) {
+                $fieldhascontent = false;
+                foreach ($datarecord as $name => $value) {
+                    if (!in_array($name, $ignorenames)) {
+                        $namearr = explode('_', $name);  // Second one is the field id
+                        if (($namearr[1] == $field->field->id)) {  // Try to reuse classes
+                            if ($field->notemptyfield($value, $name)) {
+                                $fieldhascontent = true;
+                            }
+                        }
+                    }
+                }
+                if (!$fieldhascontent) {
+                    $notifications[] = get_string('requiredfieldmissing','data', $field->field->name);
+                    $hasrequiredfields = false;
+                }
+            }
+        }
+    }
+
+    foreach ($datarecord as $name => $value) {
+        if (!in_array($name, $ignorenames)) {
+            $namearr = explode('_', $name);  // Second one is the field id
+            if (empty($field->field) || ($namearr[1] != $field->field->id)) {  // Try to reuse classes
+                $field = data_get_field_from_id($namearr[1], $data);
+            }
+            if ($field->notemptyfield($value, $name)) {
+                $emptyform = false;
+                break;             // if anything has content, this form is not empty, so stop now!
+            }
+        }
+    }
+
+    if ($emptyform){    //nothing gets written to database
+        $notifications[] = get_string('emptyaddform','data');
+    }
 
     if ($rid) {                                          /// Update some records
 
@@ -171,50 +239,34 @@ if ($datarecord = data_submitted() and confirm_sesskey()) {
         $record->timemodified = time();
         $DB->update_record('data_records', $record);
 
-        /// Update all content
-        $field = NULL;
-        foreach ($datarecord as $name => $value) {
-            if (!in_array($name, $ignorenames)) {
-                $namearr = explode('_',$name);  // Second one is the field id
-                if (empty($field->field) || ($namearr[1] != $field->field->id)) {  // Try to reuse classes
-                    $field = data_get_field_from_id($namearr[1], $data);
-                }
-                if ($field) {
-                    $field->update_content($rid, $value, $name);
+        if ($hasrequiredfields && !$emptyform) {
+            $record->timemodified = time();
+            $DB->update_record('data_records', $record);
+
+            /// Update all content
+            $field = NULL;
+            foreach ($datarecord as $name => $value) {
+                if (!in_array($name, $ignorenames)) {
+                    $namearr = explode('_',$name);  // Second one is the field id
+                    if (empty($field->field) || ($namearr[1] != $field->field->id)) {  // Try to reuse classes
+                        $field = data_get_field_from_id($namearr[1], $data);
+                    }
+                    if ($field) {
+                        $field->update_content($rid, $value, $name);
+                    }
                 }
             }
+
+            add_to_log($course->id, 'data', 'update', "view.php?d=$data->id&amp;rid=$rid", $data->id, $cm->id);
+
+            redirect($CFG->wwwroot.'/mod/data/view.php?d='.$data->id.'&rid='.$rid);
         }
-
-        add_to_log($course->id, 'data', 'update', "view.php?d=$data->id&amp;rid=$rid", $data->id, $cm->id);
-
-        redirect($CFG->wwwroot.'/mod/data/view.php?d='.$data->id.'&rid='.$rid);
 
     } else { /// Add some new records
-        ///Empty form checking - you can't submit an empty form!
 
-        $emptyform = true;      // assume the worst
-
-        foreach ($datarecord as $name => $value) {
-            if (!in_array($name, $ignorenames)) {
-                $namearr = explode('_', $name);  // Second one is the field id
-                if (empty($field->field) || ($namearr[1] != $field->field->id)) {  // Try to reuse classes
-                    $field = data_get_field_from_id($namearr[1], $data);
-                }
-                if ($field->notemptyfield($value, $name)) {
-                    $emptyform = false;
-                    break;             // if anything has content, this form is not empty, so stop now!
-                }
-            }
-        }
-
-        if ($emptyform){    //nothing gets written to database
-            echo $OUTPUT->notification(get_string('emptyaddform','data'));
-        }
-
-        if (!$emptyform && $recordid = data_add_record($data, $currentgroup)) {    //add instance to data_record
+        if ($hasrequiredfields && !$emptyform && $recordid = data_add_record($data, $currentgroup)) {    //add instance to data_record
 
             /// Insert a whole lot of empty records to make sure we have them
-            $fields = $DB->get_records('data_fields', array('dataid'=>$data->id));
             foreach ($fields as $field) {
                 $content = new stdClass();
                 $content->recordid = $recordid;
@@ -278,6 +330,15 @@ if (!$rid){
     echo $OUTPUT->heading(get_string('newentry','data'), 3);
 }
 
+// print notifications
+foreach ($notifications as $notification) {
+    echo $OUTPUT->notification($notification);
+}
+
+if (!$notifications) {
+    $datarecord = null;
+}
+
 /******************************************
  * Regular expression replacement section *
  ******************************************/
@@ -290,12 +351,27 @@ if ($data->addtemplate){
     foreach ($possiblefields as $eachfield){
         $field = data_get_field($eachfield, $data);
 
-        // To skip unnecessary calls to display_add_field().
-        if (strpos($data->addtemplate, "[[".$field->field->name."]]") !== false) {
-            $patterns[] = "[[".$field->field->name."]]";
-            $replacements[] = $field->display_add_field($rid);
+        $value = '';
+        $fieldid = 'field_'.$field->field->id;
+        if ($field->field->type == 'file') {
+            $fieldid .= '_file';
         }
-        $patterns[] = "[[".$field->field->name."#id]]";
+        if (isset($datarecord->$fieldid) && $field->notemptyfield($datarecord->$fieldid, $field->field->name)) {
+            $value = $datarecord->$fieldid;
+        }
+      // To skip unnecessary calls to display_add_field().
+      if (strpos($data->addtemplate, "[[".$field->field->name."]]") !== false) {
+        $patterns[]="[[".$field->field->name."]]";
+
+        if (!empty($field->field->private) && !has_capability('mod/data:editprivatefields', $context) &&
+            !(has_capability('mod/data:editownprivatefields', $context) && (!$rid || data_isowner($rid)))) {
+            $replacements[] = '<span class="privatefieldlocked">' . get_string('cannoteditprivatefield', 'data') . '</span>';
+        } else {
+            $replacements[] = $field->display_add_field($rid, $datarecord);
+        }
+
+      }
+        $patterns[]="[[".$field->field->name."#id]]";
         $replacements[] = 'field_'.$field->field->id;
     }
     $newtext = str_ireplace($patterns, $replacements, $data->{$mode});

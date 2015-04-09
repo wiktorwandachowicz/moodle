@@ -26,17 +26,24 @@ class data_field_menu extends data_field_base {
 
     var $type = 'menu';
 
-    function display_add_field($recordid=0) {
+    function display_add_field($recordid=0, $formdata=null) {
         global $DB, $OUTPUT;
 
-        if ($recordid){
+        if ($formdata) {
+            $fieldname = 'field_' . $this->field->id;
+            $content = $formdata->$fieldname;
+        } else if ($recordid){
             $content = $DB->get_field('data_content', 'content', array('fieldid'=>$this->field->id, 'recordid'=>$recordid));
             $content = trim($content);
         } else {
             $content = '';
         }
+        $requiredfieldhint = '';
+        if (!empty($this->field->required)) {
+            $requiredfieldhint = get_string('requiredfieldhint', 'data');
+        }
 
-        $str = '<div title="'.s($this->field->description).'">';
+        $str = '<div title="'.s($this->field->description).s($requiredfieldhint).'">';
 
         $options = array();
         $rawoptions = explode("\n",$this->field->param1);
@@ -49,6 +56,9 @@ class data_field_menu extends data_field_base {
 
         $str .= html_writer::label(get_string('menuchoose', 'data'), 'field_'.$this->field->id, false, array('class' => 'accesshide'));
         $str .= html_writer::select($options, 'field_'.$this->field->id, $content, array(''=>get_string('menuchoose', 'data')), array('id'=>'field_'.$this->field->id));
+        if (!empty($this->field->required)) {
+            $str .= '<span class="requiredfield">' . get_string('requiredfieldshort', 'data') . '</span>';
+        }
 
         $str .= '</div>';
 
