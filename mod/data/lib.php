@@ -137,6 +137,8 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
         $this->field->param3 = '';
         $this->field->name = '';
         $this->field->description = '';
+        $this->field->private = false;
+        $this->field->required = false;
 
         return true;
     }
@@ -152,6 +154,8 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
 
         $this->field->name        = trim($data->name);
         $this->field->description = trim($data->description);
+        $this->field->private     = !empty($data->private) ? 1 : 0;
+        $this->field->required    = !empty($data->required) ? 1 : 0;
 
         if (isset($data->param1)) {
             $this->field->param1 = trim($data->param1);
@@ -268,10 +272,13 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
      * @param int $recordid
      * @return string
      */
-    function display_add_field($recordid=0){
+    function display_add_field($recordid=0, $formdata = null){
         global $DB;
 
-        if ($recordid){
+        if ($formdata) {
+            $fieldname = 'field_' . $this->field->id;
+            $content = $formdata->$fieldname;
+        } else if ($recordid){
             $content = $DB->get_field('data_content', 'content', array('fieldid'=>$this->field->id, 'recordid'=>$recordid));
         } else {
             $content = '';
@@ -282,9 +289,14 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
             $content='';
         }
 
-        $str = '<div title="'.s($this->field->description).'">';
+        $requiredfieldhint = '';
+        if (!empty($this->field->required)) {
+            $requiredfieldhint = get_string('requiredfieldhint', 'data');
+        }
+
+        $str = '<div title="'.s($this->field->description).s($requiredfieldhint).'">';
         $str .= '<label class="accesshide" for="field_'.$this->field->id.'">'.$this->field->description.'</label>';
-        $str .= '<input class="basefieldinput" type="text" name="field_'.$this->field->id.'" id="field_'.$this->field->id.'" value="'.s($content).'" />';
+        $str .= '<input style="width:300px;" class="basefieldinput" type="text" name="field_'.$this->field->id.'" id="field_'.$this->field->id.'" value="'.s($content).'" />';
         $str .= '</div>';
 
         return $str;
@@ -548,7 +560,7 @@ function data_generate_default_template(&$data, $template, $recordid=0, $form=fa
         foreach ($fields as $field) {
             if ($form) {   // Print forms instead of data
                 $fieldobj = data_get_field($field, $data);
-                $token = $fieldobj->display_add_field($recordid);
+                $token = $fieldobj->display_add_field($recordid, null);
             } else {           // Just print the tag
                 $token = '[['.$field->name.']]';
             }
@@ -1231,7 +1243,13 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
     // Then we generate strings to replace for normal tags
         foreach ($fields as $field) {
             $patterns[]='[['.$field->field->name.']]';
-            $replacement[] = highlight($search, $field->display_browse_field($record->id, $template));
+
+            if (!empty($field->field->private) && !has_capability('mod/data:viewprivatefields', $context) &&
+                !(has_capability('mod/data:viewownprivatefields', $context) && data_isowner($record->id))) {
+                $replacement[] = '<span class="privatefieldhidden">' . get_string('cannotviewprivatefield', 'data') . '</span>';
+            } else {
+                $replacement[] = highlight($search, $field->display_browse_field($record->id, $template));
+            }
         }
 
         $canmanageentries = has_capability('mod/data:manageentries', $context);
@@ -2813,6 +2831,7 @@ function data_export_ods($export, $dataname, $count) {
 function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0, $context=null,
                              $userdetails=false, $time=false, $approval=false) {
     global $DB;
+    static $remove_new_line = array("\r\n", "\n", "\r");
 
     if (is_null($context)) {
         $context = context_system::instance();
@@ -2822,9 +2841,14 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
 
     $exportdata = array();
 
+    $cm = get_coursemodule_from_instance('data', $dataid, 0, false, MUST_EXIST);
+    $viewprivate = has_capability('mod/data:viewprivatefields', context_module::instance($cm->id));
+    $viewownprivate = has_capability('mod/data:viewownprivatefields', context_module::instance($cm->id));
+
     // populate the header in first row of export
     foreach($fields as $key => $field) {
-        if (!in_array($field->field->id, $selectedfields)) {
+        if (!in_array($field->field->id, $selectedfields) ||
+            (!empty($field->field->private) && !$viewprivate && !$viewownprivate)) {
             // ignore values we aren't exporting
             unset($fields[$key]);
         } else {
@@ -2860,8 +2884,12 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
         if( $content = $DB->get_records_sql($select, $where) ) {
             foreach($fields as $field) {
                 $contents = '';
-                if(isset($content[$field->field->id])) {
-                    $contents = $field->export_text_value($content[$field->field->id]);
+                if (empty($field->field->private) || $viewprivate || ($viewownprivate && data_isowner($record->id))) {
+                    if(isset($content[$field->field->id])) {
+                        $contents = $field->export_text_value($content[$field->field->id]);
+                        $contents = strip_tags($contents);
+                        $contents = str_replace($remove_new_line, ' ', $contents);
+                    }
                 }
                 $exportdata[$line][] = $contents;
             }
