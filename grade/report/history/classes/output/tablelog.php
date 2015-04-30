@@ -59,6 +59,11 @@ class tablelog extends \table_sql implements \renderable {
     protected $gradeitems = array();
 
     /**
+     * @var array A list of scales used by grade items present in the course.
+     */
+    protected $scales = array();
+
+    /**
      * @var \course_modinfo|null A list of cm instances in course.
      */
     protected $cms;
@@ -176,6 +181,44 @@ class tablelog extends \table_sql implements \renderable {
     }
 
     /**
+     * Method to format the grade taking scale into account.
+     *
+     * @param \stdClass $history an entry of history record.
+     * @param int       $gradeval value of grade.
+     * @param int       $decimalpoints number of decimal places.
+     *
+     * @return string HTML to display
+     */
+    protected function format_grade_value(\stdClass $history, $gradeval, $decimalpoints) {
+        global $DB;
+        if ($history->gradetype == GRADE_TYPE_SCALE) {
+            $scaleid = $history->scaleid;
+            if (!array_key_exists($scaleid, $this->scales)) {
+                $this->scales[$scaleid] = $DB->get_record('scale', array('id' => $scaleid));
+            }
+            $scale = $this->scales[$scaleid];
+            $scaleitems = null;
+            if (empty($scale)) {
+                // If the item is using a scale that's been removed.
+                return format_float($gradeval, $decimalpoints) . ' (' . get_string('missingscale', 'grades') . ')';
+            } else {
+                $scaleitems = explode(',', $scale->scale);
+                // Invalid grade if gradeval < 1.
+                if ($gradeval < 1) {
+                    return '-';
+                } else if ($gradeval <= count($scaleitems)) {
+                    // Quick hack to avoid reaching beyond end of $scaleitems array.
+                    // Maybe {grade_items_history} should be used to track changes to scale and grade type?
+                    return $scaleitems[$gradeval - 1];
+                }
+            }
+        }
+
+        // Default is to display uninterpreted value.
+        return format_float($gradeval, $decimalpoints);
+    }
+
+    /**
      * Method to display the final grade.
      *
      * @param \stdClass $history an entry of history record.
@@ -189,7 +232,7 @@ class tablelog extends \table_sql implements \renderable {
             $decimalpoints = $this->defaultdecimalpoints;
         }
 
-        return format_float($history->finalgrade, $decimalpoints);
+        return $this->format_grade_value($history, $history->finalgrade, $decimalpoints);
     }
 
     /**
@@ -206,7 +249,7 @@ class tablelog extends \table_sql implements \renderable {
             $decimalpoints = $this->defaultdecimalpoints;
         }
 
-        return format_float($history->prevgrade, $decimalpoints);
+        return $this->format_grade_value($history, $history->prevgrade, $decimalpoints);
     }
 
     /**
@@ -368,7 +411,10 @@ class tablelog extends \table_sql implements \renderable {
     protected function get_sql_and_params($count = false) {
         $fields = 'ggh.id, ggh.timemodified, ggh.itemid, ggh.userid, ggh.finalgrade, ggh.usermodified,
                    ggh.source, ggh.overridden, ggh.locked, ggh.excluded, ggh.feedback, ggh.feedbackformat,
+                   gi.scaleid, gi.gradetype, gi.categoryid,
                    gi.itemtype, gi.itemmodule, gi.iteminstance, gi.itemnumber, ';
+        // Note: fields gi.scaleid, gi.gradetype, gi.categoryid use current settings of {grade_item}.
+        // Maybe {grade_items_history} should be used to track changes to scale and grade type?
 
         // Add extra user fields that we need for the graded user.
         $extrafields = get_extra_user_fields($this->context);
