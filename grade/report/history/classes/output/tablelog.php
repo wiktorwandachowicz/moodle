@@ -193,14 +193,14 @@ class tablelog extends \table_sql implements \renderable {
         global $DB;
         if ($history->gradetype == GRADE_TYPE_SCALE) {
             $scaleid = $history->scaleid;
-            if (!array_key_exists($scaleid, $this->scales)) {
+            if (!isset($scaleid[$this->scales])) {
                 $this->scales[$scaleid] = $DB->get_record('scale', array('id' => $scaleid));
             }
             $scale = $this->scales[$scaleid];
             $scaleitems = null;
             if (empty($scale)) {
                 // If the item is using a scale that's been removed.
-                return format_float($gradeval, $decimalpoints) . ' (' . get_string('missingscale', 'grades') . ')';
+                return format_float($gradeval, $decimalpoints) . ' (' . get_string('error') . ')';
             } else {
                 $scaleitems = explode(',', $scale->scale);
                 // Invalid grade if gradeval < 1.
