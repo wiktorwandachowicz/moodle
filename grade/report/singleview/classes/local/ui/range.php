@@ -49,11 +49,6 @@ class range extends attribute_format {
      * @return element
      */
     public function determine_format() {
-        $decimals = $this->item->get_decimals();
-
-        $min = format_float($this->item->grademin, $decimals);
-        $max = format_float($this->item->grademax, $decimals);
-
-        return new empty_element("$min - $max");
+        return new empty_element($this->item->get_formatted_range());
     }
 }
