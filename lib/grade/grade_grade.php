@@ -971,12 +971,24 @@ class grade_grade extends grade_object {
     }
 
     /**
+     * For calculated total grade make sure properties are up to date (grademin, grademin, scaleid).
+     * This allows correct calculations of grade percentage for category and course totals.
+     */
+    private function adjust_calculated_total_grade_properties() {
+        $grade_item = $this->load_grade_item();
+        if (method_exists($grade_item, 'update_calculated_total_grade_properties')) {
+            $grade_item->update_calculated_total_grade_properties($this);
+        }
+    }
+
+    /**
      * Insert the grade_grade instance into the database.
      *
      * @param string $source From where was the object inserted (mod/forum, manual, etc.)
      * @return int The new grade_grade ID if successful, false otherwise
      */
     public function insert($source=null) {
+        $this->adjust_calculated_total_grade_properties();
         // TODO: dategraded hack - do not update times, they are used for submission and grading (MDL-31379)
         //$this->timecreated = $this->timemodified = time();
         return parent::insert($source);
@@ -990,6 +1002,7 @@ class grade_grade extends grade_object {
      * @return bool success
      */
     public function update($source=null) {
+        $this->adjust_calculated_total_grade_properties();
         $this->rawgrade    = grade_floatval($this->rawgrade);
         $this->finalgrade  = grade_floatval($this->finalgrade);
         $this->rawgrademin = grade_floatval($this->rawgrademin);

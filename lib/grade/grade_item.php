@@ -290,6 +290,8 @@ class grade_item extends grade_object {
         $this->aggregationcoef = grade_floatval($this->aggregationcoef);
         $this->aggregationcoef2 = grade_floatval($this->aggregationcoef2);
 
+        $this->update_calculated_total_grades();
+
         return parent::update($source);
     }
 
@@ -327,6 +329,55 @@ class grade_item extends grade_object {
         return ($calculationdiff || $categorydiff || $gradetypediff || $grademaxdiff || $grademindiff || $scaleiddiff
              || $outcomeiddiff || $multfactordiff || $plusfactordiff || $needsupdatediff
              || $lockeddiff || $acoefdiff || $acoefdiff2 || $weightoverride || $locktimediff);
+    }
+
+    /**
+     * Updates raw grade properties (grademax, grademin, scaleid) of calculated grades for this item.
+     * This allows correct calculations of grade percentage for category and course totals.
+     *
+     * @param int $userid Supply a user ID to limit the update to calculated grade of a single user
+     */
+    protected function update_calculated_total_grades($userid = null) {
+        global $DB;
+        if ($this->is_calculated_total_item()) {
+            $params = array('grademax' => $this->grademax, 'grademin' => $this->grademin,
+                            'scaleid' => $this->scaleid, 'itemid' => $this->id);
+            $sql = "UPDATE {grade_grades}
+                       SET rawgrademax = :grademax,
+                           rawgrademin = :grademin,
+                           rawscaleid = :scaleid
+                     WHERE itemid = :itemid";
+
+            if (!empty($userid)) {
+                $params['userid'] = $userid;
+                $sql .= " AND userid=:userid";
+            }
+
+            $DB->execute($sql, $params);
+        }
+    }
+
+    /**
+     * Updates raw grade properties of calculated grade object (grademax, grademin, scaleid).
+     * This allows correct calculations of grade percentage for category and course totals.
+     *
+     * @param object $grade grade_grade object to be updated.
+     */
+    public function update_calculated_total_grade_properties($grade) {
+        if ($this->is_calculated_total_item()) {
+            $grade->rawgrademax = $this->grademax;
+            $grade->rawgrademin = $this->grademin;
+            $grade->rawscaleid = $this->scaleid;
+        }
+    }
+
+    /**
+     * Checks if grade is calculated category total or calculated course total.
+     *
+     * @return bool true if grade item is calculated total grade.
+     */
+    public function is_calculated_total_item() {
+        return ($this->is_calculated() and $this->is_aggregate_item());
     }
 
     /**
@@ -683,6 +734,7 @@ class grade_item extends grade_object {
             $category = $this->get_item_category();
             $category->grade_item =& $this;
             if ($category->generate_grades($userid)) {
+                $this->update_calculated_total_grades($userid);
                 return true;
             } else {
                 return "Could not aggregate final grades for category:".$this->id; // TODO: improve and localize
@@ -1855,6 +1907,7 @@ class grade_item extends grade_object {
                 $grade->grade_item =& $this;
                 $grade->insert('system');
             }
+            $this->update_calculated_total_grades($userid);
         }
 
         // get used items
