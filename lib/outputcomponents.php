@@ -1389,6 +1389,7 @@ class html_writer {
         $currentdate = usergetdate($currenttime);
         $userdatetype = $type;
         $timeunits = array();
+        $nothing = null;
 
         switch ($type) {
             case 'years':
@@ -1396,6 +1397,9 @@ class html_writer {
                     $timeunits[$i] = $i;
                 }
                 $userdatetype = 'year';
+                if ($currentdate['year'] < 1000) {
+                    $nothing = array('999' => 'choosedots');
+                }
                 break;
             case 'months':
                 for ($i=1; $i<=12; $i++) {
@@ -1431,7 +1435,7 @@ class html_writer {
         if (empty($attributes['id'])) {
             $attributes['id'] = self::random_id('ts_');
         }
-        $timerselector = self::select($timeunits, $name, $currentdate[$userdatetype], null, $attributes);
+        $timerselector = self::select($timeunits, $name, $currentdate[$userdatetype], $nothing, $attributes);
         $label = self::tag('label', get_string(substr($type, 0, -1), 'form'), array('for'=>$attributes['id'], 'class'=>'accesshide'));
 
         return $label.$timerselector;

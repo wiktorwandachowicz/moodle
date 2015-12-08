@@ -3890,6 +3890,9 @@ function data_process_submission(stdClass $mod, $fields, stdClass $datarecord) {
                     // The field has content and the form is not empty.
                     $fieldhascontent = true;
                     $emptyform = false;
+                } else {
+                    // Reset is needed for 'date' field, since it is validated three times (day, month, year).
+                    $fieldhascontent = false;
                 }
             }
         }

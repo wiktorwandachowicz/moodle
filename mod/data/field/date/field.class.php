@@ -34,6 +34,11 @@ class data_field_date extends data_field_base {
     var $month = 0;
     var $year  = 0;
 
+    private function invalid_timestamp() {
+        // Value considered 'blank' date: 0999-01-01 (with year number 999).
+        return make_timestamp(999, 1, 1, 12, 0, 0, 0, false);
+    }
+
     function display_add_field($recordid = 0, $formdata = null) {
         global $DB, $OUTPUT;
 
@@ -48,15 +53,28 @@ class data_field_date extends data_field_base {
         } else if ($recordid) {
             $content = (int)$DB->get_field('data_content', 'content', array('fieldid'=>$this->field->id, 'recordid'=>$recordid));
         } else {
-            $content = time();
+            if (!empty($this->field->required)) {
+                $content = $this->invalid_timestamp();
+            } else {
+                $content = time();
+            }
         }
 
-        $str = '<div title="'.s($this->field->description).'" class="mod-data-input">';
+        $str = '<div title="'.s($this->field->description).'">';
+        $str .= '<label for="' . 'field_' . $this->field->id . '">';
+        $str .= html_writer::span($this->field->name, 'accesshide');
+        if ($this->field->required) {
+            $image = html_writer::img($OUTPUT->pix_url('req'), get_string('requiredelement', 'form'),
+                                     array('class' => 'req', 'title' => get_string('requiredelement', 'form')));
+            $str .= html_writer::div($image, 'inline-req');
+        }
+        $str .= '</label>';
+        $str .= '<div class="mod-data-input">';
         $dayselector = html_writer::select_time('days', 'field_'.$this->field->id.'_day', $content);
         $monthselector = html_writer::select_time('months', 'field_'.$this->field->id.'_month', $content);
         $yearselector = html_writer::select_time('years', 'field_'.$this->field->id.'_year', $content);
         $str .= $dayselector . $monthselector . $yearselector;
-        $str .= '</div>';
+        $str .= '</div></div>';
 
         return $str;
     }
@@ -93,6 +111,11 @@ class data_field_date extends data_field_base {
             $data['usedate'] = 1;
             return $data;
         } else {
+            if (!empty($this->field->required)) {
+                $data['timestamp'] = $this->invalid_timestamp();
+                $data['usedate'] = 1;
+                return $data;
+            }
             return 0;
         }
     }
@@ -134,5 +157,25 @@ class data_field_date extends data_field_base {
         return $DB->sql_cast_char2int($fieldname, true);
     }
 
+    /**
+     * Ignore required dates with year number less than 1000.
+     *
+     * @param string $value value to validate
+     * @param string $name compound name of field to validate
+     * @return bool
+     */
+    function notemptyfield($value, $name) {
+        $names = explode('_', $name);
+        if (count($names) == 3) {
+            $value = clean_param($value, PARAM_INT);
+            if (!empty($value)) {
+                if (!empty($this->field->required) && ($names[2] == 'year')) {
+                    return ($value >= 1000);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
 
 }
