@@ -308,9 +308,10 @@ class data_field_picture extends data_field_base {
      *
      * @param string $value
      * @param string $name
+     * @param bool &$invalid
      * @return bool
      */
-    function notemptyfield($value, $name) {
+    function notemptyfield($value, $name, &$invalid) {
         global $USER;
 
         $names = explode('_', $name);

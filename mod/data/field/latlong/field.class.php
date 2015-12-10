@@ -247,9 +247,10 @@ class data_field_latlong extends data_field_base {
      *
      * @param mixed $value
      * @param mixed $name
+     * @param bool &$invalid
      * @return bool
      */
-    function notemptyfield($value, $name) {
+    function notemptyfield($value, $name, &$invalid) {
         return isset($value) && !($value == '');
     }
 

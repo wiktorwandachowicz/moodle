@@ -25,6 +25,8 @@
 //2/19/07:  Advanced search of the date field is currently disabled because it does not track
 // pre 1970 dates and does not handle blank entrys.  Advanced search functionality for this field
 // type can be enabled once these issues are addressed in the core API.
+//2015-12-10:  Blank date entires are handled by using invalid_timestamp() with year number 999
+// and custom notemptyfield() method.
 
 class data_field_date extends data_field_base {
 
@@ -160,17 +162,20 @@ class data_field_date extends data_field_base {
     /**
      * Ignore required dates with year number less than 1000.
      *
-     * @param string $value value to validate
-     * @param string $name compound name of field to validate
+     * @param string $value Submitted value to validate
+     * @param string $name Compound name of field to validate
+     * @param bool &$invalid Set to true if content is not empty, but still incorrect
      * @return bool
      */
-    function notemptyfield($value, $name) {
+    function notemptyfield($value, $name, &$invalid) {
         $names = explode('_', $name);
         if (count($names) == 3) {
             $value = clean_param($value, PARAM_INT);
             if (!empty($value)) {
                 if (!empty($this->field->required) && ($names[2] == 'year')) {
-                    return ($value >= 1000);
+                    if ($value < 1000) {
+                        $invalid = true;
+                    }
                 }
                 return true;
             }

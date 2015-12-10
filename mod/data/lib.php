@@ -426,13 +426,16 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
     }
 
     /**
-     * Check if a field from an add form is empty
+     * Check if a field from an add form is empty.
+     * It can also set $invalid to true if field is not empty
+     * but its contents is incorrect.
      *
      * @param mixed $value
      * @param mixed $name
+     * @param bool &$invalid
      * @return bool
      */
-    function notemptyfield($value, $name) {
+    function notemptyfield($value, $name, &$invalid) {
         return !empty($value);
     }
 
@@ -3874,6 +3877,7 @@ function data_process_submission(stdClass $mod, $fields, stdClass $datarecord) {
     foreach ($fields as $fieldrecord) {
         // Check whether the field has any data.
         $fieldhascontent = false;
+        $fieldinvalid = false;
 
         $field = data_get_field($fieldrecord, $mod);
         if (isset($submitteddata[$fieldrecord->id])) {
@@ -3886,14 +3890,16 @@ function data_process_submission(stdClass $mod, $fields, stdClass $datarecord) {
                 }
             }
             foreach ($submitteddata[$fieldrecord->id] as $fieldname => $value) {
-                if ($field->notemptyfield($value->value, $value->fieldname)) {
+                if ($field->notemptyfield($value->value, $value->fieldname, $fieldinvalid)) {
                     // The field has content and the form is not empty.
                     $fieldhascontent = true;
                     $emptyform = false;
-                } else {
-                    // Reset is needed for 'date' field, since it is validated three times (day, month, year).
-                    $fieldhascontent = false;
                 }
+            }
+            if ($fieldinvalid) {
+                // Assume no content if field is not empty, but its content is invalid.
+                // Needed for fields like 'date', which is validated three times (day, month, year).
+                $fieldhascontent = false;
             }
         }
 

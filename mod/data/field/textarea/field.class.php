@@ -264,9 +264,10 @@ class data_field_textarea extends data_field_base {
      *
      * @param string $value
      * @param string $name
+     * @param bool &$invalid
      * @return bool
      */
-    function notemptyfield($value, $name) {
+    function notemptyfield($value, $name, &$invalid) {
         $names = explode('_', $name);
         // Clean first.
         if (count($names) == 2) {

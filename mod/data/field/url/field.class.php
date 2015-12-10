@@ -192,7 +192,15 @@ class data_field_url extends data_field_base {
         }
     }
 
-    function notemptyfield($value, $name) {
+    /**
+     * Custom notempty function
+     *
+     * @param string $value
+     * @param string $name
+     * @param bool &$invalid
+     * @return bool
+     */
+    function notemptyfield($value, $name, &$invalid) {
         $names = explode('_',$name);
         $value = clean_param($value, PARAM_URL);
         //clean first

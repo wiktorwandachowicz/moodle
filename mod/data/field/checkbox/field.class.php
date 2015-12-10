@@ -228,9 +228,10 @@ class data_field_checkbox extends data_field_base {
      *
      * @param mixed $value The submitted values
      * @param mixed $name
+     * @param bool &$invalid
      * @return bool
      */
-    function notemptyfield($value, $name) {
+    function notemptyfield($value, $name, &$invalid) {
         $found = false;
         foreach ($value as $checkboxitem) {
             if (!empty($checkboxitem)) {
