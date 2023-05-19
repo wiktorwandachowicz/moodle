@@ -138,7 +138,7 @@ $datarecord = data_submitted() ?: null;
 if ($datarecord && confirm_sesskey()) {
     // Validate the form to ensure that enough data was submitted.
     $fields = $manager->get_field_records();
-    $processeddata = data_process_submission($data, $fields, $datarecord);
+    $processeddata = data_process_submission($data, $fields, $datarecord, $context);
 
     if ($processeddata->validated) {
         if ($rid) {

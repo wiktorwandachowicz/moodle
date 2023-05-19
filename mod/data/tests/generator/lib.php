@@ -112,6 +112,10 @@ class mod_data_generator extends testing_module_generator {
             $record['required'] = 0;
         }
 
+        if (!isset($record['private'])) {
+            $record['private'] = 0;
+        }
+
         if (!isset($record['name'])) {
             $record['name'] = "testField - " . $this->databasefieldcount;
         }
