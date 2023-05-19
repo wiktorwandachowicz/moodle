@@ -48,5 +48,17 @@ function xmldb_data_upgrade($oldversion) {
     // Automatically generated Moodle v4.2.0 release upgrade line.
     // Put any upgrade step following this.
 
+    if ($oldversion < 2023042401) {
+        $table = new xmldb_table('data_fields');
+        $field = new xmldb_field('private', XMLDB_TYPE_INTEGER, '4', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'description');
+
+        // Private field support.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2023042401, 'data');
+    }
+
     return true;
 }

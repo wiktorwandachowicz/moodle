@@ -71,6 +71,9 @@ class template {
     /** @var bool if the current user can manage entries. */
     private $canmanageentries = null;
 
+    /** @var array set of boolean flags corresponding to management capabilities of private fields. */
+    private $fieldoptions = null;
+
     /** @var array if icons HTML. */
     private $icons = [];
 
@@ -100,6 +103,8 @@ class template {
 
         $context = $manager->get_context();
         $this->canmanageentries = has_capability('mod/data:manageentries', $context);
+        // Private fields support.
+        $this->fieldoptions = data_user_privatefield_options($this->instance->id, $context);
         $this->icons = $this->get_icons();
         $this->fields = $fields ?? $manager->get_fields();
         $this->add_options($options);
@@ -316,10 +321,15 @@ class template {
         foreach ($this->fields as $field) {
             // Field value.
             $pattern = '[[' . $field->field->name . ']]';
-            $result[$pattern] = highlight(
-                $this->search,
-                $field->display_browse_field($entry->id, $this->templatename)
-            );
+            // Logic to show/hide private field contents.
+            if (data_user_canview_field($field->field, $this->fieldoptions, $entry->id)) {
+                $result[$pattern] = highlight(
+                    $this->search,
+                    $field->display_browse_field($entry->id, $this->templatename)
+                );
+            } else {
+                $result[$pattern] = html_writer::span(get_string('cannotviewprivatefield', 'data'), 'privatefieldhidden');
+            }
             // Other dynamic field information.
             $pattern = '[[' . $field->field->name . '#id]]';
             $result[$pattern] = $field->field->id;
@@ -996,8 +1006,14 @@ class template {
                     (object)['name' => $field->field->name]
                 ));
             }
-        } else {
+        } else if (data_user_canedit_field($field->field, $this->fieldoptions, $entryid)) {
             $fielddisplay = $field->display_add_field($entryid, $entrydata);
+        } else if (!empty($field->field->private)) {
+            if (data_user_canview_field($field->field, $this->fieldoptions, $entryid)) {
+                $fielddisplay = $field->display_browse_field($entryid, $entrydata);
+            } else {
+                $fielddisplay = get_string('cannoteditprivatefield', 'data');
+            }
         }
         return $errors . $fielddisplay;
     }
