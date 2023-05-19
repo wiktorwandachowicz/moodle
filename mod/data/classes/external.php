@@ -1020,7 +1020,7 @@ class mod_data_external extends external_api {
             $datarecord->{'field_' . $data['fieldid'] . $subfield} = json_decode($data['value']);
         }
         // Validate to ensure that enough data was submitted.
-        $processeddata = data_process_submission($database, $fields, $datarecord);
+        $processeddata = data_process_submission($database, $fields, $datarecord, $context);
 
         // Format notifications.
         if (!empty($processeddata->fieldnotifications)) {
@@ -1135,7 +1135,7 @@ class mod_data_external extends external_api {
         }
         // Validate to ensure that enough data was submitted.
         $fields = $DB->get_records('data_fields', array('dataid' => $database->id));
-        $processeddata = data_process_submission($database, $fields, $datarecord);
+        $processeddata = data_process_submission($database, $fields, $datarecord, $context);
 
         // Format notifications.
         if (!empty($processeddata->fieldnotifications)) {

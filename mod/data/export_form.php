@@ -68,11 +68,18 @@ class mod_data_export_form extends moodleform {
         $mform->addElement('header', 'exportfieldsheader', get_string('chooseexportfields', 'data'));
         $mform->setExpanded('exportfieldsheader');
         $numfieldsthatcanbeselected = 0;
+
+        $fieldoptions = data_user_privatefield_options($this->_data->id, context_module::instance($this->_cm->id));
+
         $exportfields = [];
         $unsupportedfields = [];
         foreach ($this->_datafields as $field) {
             $label = get_string('fieldnametype', 'data', (object)['name' => $field->field->name, 'type' => $field->name()]);
-            if ($field->text_export_supported()) {
+
+            if (!data_user_canview_field($field->field, $fieldoptions)) {
+                // Skip this field.
+                continue;
+            } else if ($field->text_export_supported()) {
                 $numfieldsthatcanbeselected++;
                 $exportfields[] = $mform->createElement('advcheckbox', 'field_' . $field->field->id, '', $label,
                     array_merge(['group' => 1], $optionattrs));

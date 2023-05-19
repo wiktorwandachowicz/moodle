@@ -177,6 +177,7 @@ switch ($mode) {
 
                 $field->field->name = $fieldinput->name;
                 $field->field->description = $fieldinput->description;
+                $field->field->private = !empty($fieldinput->private) ? 1 : 0;
                 $field->field->required = !empty($fieldinput->required) ? 1 : 0;
 
                 for ($i=1; $i<=10; $i++) {
@@ -342,12 +343,13 @@ if (($mode == 'new') && (!empty($newtype))) { // Adding a new field.
     $table->head = [
         get_string('fieldname', 'data'),
         get_string('type', 'data'),
+        get_string('private', 'data'),
         get_string('required', 'data'),
         get_string('fielddescription', 'data'),
         '&nbsp;',
     ];
-    $table->align = ['left', 'left', 'left', 'left'];
-    $table->wrap = [false,false,false,false];
+    $table->align = ['left', 'left', 'left', 'left', 'left'];
+    $table->wrap = [false, false, false, false, false];
     $table->responsive = false;
 
     $fieldrecords = $manager->get_field_records();
@@ -400,6 +402,7 @@ if (($mode == 'new') && (!empty($newtype))) { // Adding a new field.
         $table->data[] = [
             $field->field->name,
             $fieltypedata,
+            $field->field->private ? get_string('yes') : get_string('no'),
             $field->field->required ? get_string('yes') : get_string('no'),
             shorten_text($field->field->description, 30),
             $OUTPUT->render_from_template('core/action_menu', $actionmenutemplate)

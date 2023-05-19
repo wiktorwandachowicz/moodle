@@ -64,5 +64,19 @@ function xmldb_data_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2023061300, 'data');
     }
 
+    if ($oldversion < 2023061301) {
+        // Define field private to be added to data_fields.
+        $table = new xmldb_table('data_fields');
+        $field = new xmldb_field('private', XMLDB_TYPE_INTEGER, '4', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'description');
+
+        // Conditionally launch add field private.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Data savepoint reached.
+        upgrade_mod_savepoint(true, 2023061301, 'data');
+    }
+
     return true;
 }
