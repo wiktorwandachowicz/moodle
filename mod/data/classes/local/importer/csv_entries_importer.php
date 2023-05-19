@@ -69,6 +69,9 @@ class csv_entries_importer extends entries_importer {
 
         $context = context_module::instance($cm->id);
 
+        // Private fields support.
+        $haseditprivate = has_any_capability(array('mod/data:editprivatefields', 'mod/data:editownprivatefields'), $context);
+
         $readcount = $cir->load_csv_content($this->get_data_file_content(), $encoding, $fielddelimiter);
         if (empty($readcount)) {
             throw new \moodle_exception('csvfailed', 'data', "{$CFG->wwwroot}/mod/data/edit.php?d={$data->id}");
@@ -78,7 +81,7 @@ class csv_entries_importer extends entries_importer {
             }
 
             // Check the fieldnames are valid.
-            $rawfields = $DB->get_records('data_fields', ['dataid' => $data->id], '', 'name, id, type');
+            $rawfields = $DB->get_records('data_fields', ['dataid' => $data->id], '', 'name, id, type, private');
             $fields = [];
             $errorfield = '';
             $usernamestring = get_string('username');
@@ -141,6 +144,10 @@ class csv_entries_importer extends entries_importer {
                             $value = '';
                         }
 
+                        if ($field->field->private && !$haseditprivate) {
+                            // Skip private fields with no permission.
+                            continue;
+                        }
                         if (method_exists($field, 'update_content_import')) {
                             $field->update_content_import($recordid, $value, 'field_' . $field->field->id);
                         } else {
