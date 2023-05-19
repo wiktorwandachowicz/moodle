@@ -60,7 +60,12 @@ class field_exporter extends exporter {
             ),
             'required' => array(
                 'type' => PARAM_BOOL,
-                'description' => 'Whether is a field required or not.',
+                'description' => 'Whether a field is required or not.',
+                'default' => 0,
+            ),
+            'private' => array(
+                'type' => PARAM_BOOL,
+                'description' => 'Whether a field is private or not.',
                 'default' => 0,
             ),
         );

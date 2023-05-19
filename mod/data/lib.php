@@ -222,6 +222,7 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
         $this->field->param3 = '';
         $this->field->name = '';
         $this->field->description = '';
+        $this->field->private = false;
         $this->field->required = false;
 
         return true;
@@ -238,6 +239,7 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
 
         $this->field->name        = trim($data->name);
         $this->field->description = trim($data->description);
+        $this->field->private     = !empty($data->private) ? 1 : 0;
         $this->field->required    = !empty($data->required) ? 1 : 0;
 
         if (isset($data->param1)) {
@@ -2317,6 +2319,65 @@ function data_user_can_manage_entry($record, $data, $context) {
 }
 
 /**
+ * Retrieve the capabilities of current user for viewing and editing private fields in database activity.
+ *
+ * @param int $dataid database ID
+ * @param object $context context object
+ * @return array returns array of boolean flags corresponding to management capabilities of private fields
+ */
+function data_user_privatefield_options($dataid, $context = null) {
+    if (empty($context)) {
+        $cm = get_coursemodule_from_instance('data', $dataid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cm->id);
+    }
+    $options = [
+        'viewprivate'    => has_capability('mod/data:viewprivatefields', $context),
+        'viewownprivate' => has_capability('mod/data:viewownprivatefields', $context),
+        'editprivate'    => has_capability('mod/data:editprivatefields', $context),
+        'editownprivate' => has_capability('mod/data:editownprivatefields', $context),
+    ];
+    return $options;
+}
+
+/**
+ * Checks if user can see contents of private field in database entry,
+ * also can check ownership of user own entries.
+ *
+ * @param stdClass $field field parameters from {data_fields} table
+ * @param array $options result of a call to data_user_privatefield_options()
+ * @param int|null $entryid entry ID for checking ownership of entry
+ *        (zero if this check should be skipped)
+ * @return bool returns true if the user is allowed to view the field, false otherwise
+ */
+function data_user_canview_field(stdClass $field, array $options, ?int $entryid = null) {
+    // Step 1) Check if this is private field at all, if non-private - view always.
+    return empty($field->private)
+        // Step 2) Check if user can see all private fields, e.g. Teacher / Manager.
+        || ($options['viewprivate'] ?? false)
+        // Step 3) Check if user can see own private fields, optionally check entry ownership.
+        || (($options['viewownprivate'] ?? false) && (!$entryid || data_isowner($entryid)));
+}
+
+/**
+ * Checks if user can edit contents of private field in database entry,
+ * taking care of ownership of user own entries.
+ *
+ * @param stdClass $field field parameters from {data_fields} table
+ * @param array $options result of a call to data_user_privatefield_options()
+ * @param int|null $entryid entry ID for checking ownership of entry
+ *        (zero if this check should be skipped, e.g. when creating new entry)
+ * @return bool returns true if the user is allowd to view the field, false otherwise
+ */
+function data_user_canedit_field(stdClass $field, array $options, ?int $entryid = null) {
+    // Step 1) Check if this is private field at all, if non-private - edit always.
+    return empty($field->private)
+        // Step 2) Check if user can edit all private fields, e.g. Teacher / Manager.
+        || ($options['editprivate'] ?? false)
+        // Step 3) Check if user can edit own private fields, or is creating new entry.
+        || (($options['editownprivate'] ?? false) && (!$entryid || data_isowner($entryid)));
+}
+
+/**
  * Check whether the specified database activity is currently in a read-only period
  *
  * @param object $data
@@ -3000,6 +3061,7 @@ function data_import_csv($cm, $data, &$csvdata, $encoding, $fielddelimiter) {
     $cir = new csv_import_reader($iid, 'moddata');
 
     $context = context_module::instance($cm->id);
+    $haseditprivate = has_any_capability(array('mod/data:editprivatefields', 'mod/data:editownprivatefields'), $context);
 
     $readcount = $cir->load_csv_content($csvdata, $encoding, $fielddelimiter);
     $csvdata = null; // Free memory.
@@ -3011,7 +3073,7 @@ function data_import_csv($cm, $data, &$csvdata, $encoding, $fielddelimiter) {
         }
 
         // Check the fieldnames are valid.
-        $rawfields = $DB->get_records('data_fields', array('dataid' => $data->id), '', 'name, id, type');
+        $rawfields = $DB->get_records('data_fields', array('dataid' => $data->id), '', 'name, id, type, private');
         $fields = array();
         $errorfield = '';
         $usernamestring = get_string('username');
@@ -3075,6 +3137,10 @@ function data_import_csv($cm, $data, &$csvdata, $encoding, $fielddelimiter) {
                         $value = '';
                     }
 
+                    if ($field->field->private && !$haseditprivate) {
+                        // Skip private fields with no permission.
+                        continue;
+                    }
                     if (method_exists($field, 'update_content_import')) {
                         $field->update_content_import($recordid, $value, 'field_' . $field->field->id);
                     } else {
@@ -3221,19 +3287,23 @@ function data_export_ods($export, $dataname, $count) {
 function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0, $context=null,
                              $userdetails=false, $time=false, $approval=false, $tags = false) {
     global $DB;
+    static $removenewlines = array("\r\n", "\n", "\r");
 
     if (is_null($context)) {
         $context = context_system::instance();
     }
-    // exporting user data needs special permission
+    // Exporting user data needs special permission.
     $userdetails = $userdetails && has_capability('mod/data:exportuserinfo', $context);
 
     $exportdata = array();
 
-    // populate the header in first row of export
-    foreach($fields as $key => $field) {
-        if (!in_array($field->field->id, $selectedfields)) {
-            // ignore values we aren't exporting
+    $fieldoptions = data_user_privatefield_options($dataid, $context);
+
+    // Populate the header in first row of export.
+    foreach ($fields as $key => $field) {
+        if (!in_array($field->field->id, $selectedfields) ||
+            !data_user_canview_field($field->field, $fieldoptions)) {
+            // Ignore values we aren't exporting.
             unset($fields[$key]);
         } else {
             $exportdata[0][] = $field->field->name;
@@ -3259,20 +3329,29 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
     ksort($datarecords);
     $line = 1;
     foreach($datarecords as $record) {
-        // get content indexed by fieldid
+        // Get content indexed by fieldid.
         if ($currentgroup) {
-            $select = 'SELECT c.fieldid, c.content, c.content1, c.content2, c.content3, c.content4 FROM {data_content} c, {data_records} r WHERE c.recordid = ? AND r.id = c.recordid AND r.groupid = ?';
+            $select = 'SELECT c.fieldid, c.content, c.content1, c.content2, c.content3, c.content4
+                         FROM {data_content} c, {data_records} r
+                        WHERE c.recordid = ? AND r.id = c.recordid AND r.groupid = ?';
             $where = array($record->id, $currentgroup);
         } else {
-            $select = 'SELECT fieldid, content, content1, content2, content3, content4 FROM {data_content} WHERE recordid = ?';
+            $select = 'SELECT fieldid, content, content1, content2, content3, content4
+                         FROM {data_content}
+                        WHERE recordid = ?';
             $where = array($record->id);
         }
 
         if( $content = $DB->get_records_sql($select, $where) ) {
             foreach($fields as $field) {
+                // Logic to show/hide private field contents.
                 $contents = '';
-                if(isset($content[$field->field->id])) {
-                    $contents = $field->export_text_value($content[$field->field->id]);
+                if (data_user_canview_field($field->field, $fieldoptions, $record->id)) {
+                    if (isset($content[$field->field->id])) {
+                        $contents = $field->export_text_value($content[$field->field->id]);
+                        $contents = strip_tags($contents);
+                        $contents = str_replace($removenewlines, ' ', $contents);
+                    }
                 }
                 $exportdata[$line][] = $contents;
             }
@@ -3280,17 +3359,17 @@ function data_get_exportdata($dataid, $fields, $selectedfields, $currentgroup=0,
                 $itemtags = \core_tag_tag::get_item_tags_array('mod_data', 'data_records', $record->id);
                 $exportdata[$line][] = implode(', ', $itemtags);
             }
-            if ($userdetails) { // Add user details to the export data
+            if ($userdetails) { // Add user details to the export data.
                 $userdata = get_complete_user_data('id', $record->userid);
                 $exportdata[$line][] = fullname($userdata);
                 $exportdata[$line][] = $userdata->username;
                 $exportdata[$line][] = $userdata->email;
             }
-            if ($time) { // Add time added / modified
+            if ($time) { // Add time added / modified.
                 $exportdata[$line][] = userdate($record->timecreated);
                 $exportdata[$line][] = userdate($record->timemodified);
             }
-            if ($approval) { // Add approval status
+            if ($approval) { // Add approval status.
                 $exportdata[$line][] = (int) $record->approved;
             }
         }
@@ -4076,14 +4155,19 @@ function data_delete_record($recordid, $data, $courseid, $cmid) {
  * @param $mod stdClass The current recordid - provided as an optimisation.
  * @param $fields array The field data
  * @param $datarecord stdClass The submitted data.
+ * @param $context context Module context
  * @return stdClass containing:
  * * string[] generalnotifications Notifications for the form as a whole.
  * * string[] fieldnotifications Notifications for a specific field.
  * * bool validated Whether the field was validated successfully.
  * * data_field_base[] fields The field objects to be update.
  */
-function data_process_submission(stdClass $mod, $fields, stdClass $datarecord) {
+function data_process_submission(stdClass $mod, $fields, stdClass $datarecord, $context = null) {
     $result = new stdClass();
+
+    // Private fields support.
+    $fieldoptions = data_user_privatefield_options($mod->id, $context);
+    $noprivatefields = true;
 
     // Empty form checking - you can't submit an empty form.
     $emptyform = true;
@@ -4143,6 +4227,19 @@ function data_process_submission(stdClass $mod, $fields, stdClass $datarecord) {
             }
         }
 
+        // Prevent replacements for private fields.
+        $rid = $datarecord->rid ?? 0;
+        if ($field->field->private && !data_user_canedit_field($field->field, $fieldoptions, $rid)) {
+            if (isset($submitteddata[$fieldrecord->id])) {
+                if (!isset($result->fieldnotifications[$field->field->name])) {
+                    $result->fieldnotifications[$field->field->name] = array();
+                }
+                $result->fieldnotifications[$field->field->name][] =
+                    html_writer::span(get_string('cannoteditprivatefield', 'data'), 'privatefieldlocked');
+                $noprivatefields = false;
+            }
+        }
+
         // If the field is required, add a notification to that effect.
         if ($field->field->required && !$fieldhascontent) {
             if (!isset($result->fieldnotifications[$field->field->name])) {
@@ -4165,7 +4262,7 @@ function data_process_submission(stdClass $mod, $fields, stdClass $datarecord) {
         $result->generalnotifications[] = get_string('emptyaddform', 'data');
     }
 
-    $result->validated = $requiredfieldsfilled && !$emptyform && $fieldsvalidated;
+    $result->validated = $requiredfieldsfilled && $noprivatefields && !$emptyform && $fieldsvalidated;
 
     return $result;
 }

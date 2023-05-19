@@ -466,6 +466,7 @@ class externallib_test extends externallib_advanced_testcase {
             $record->name = $fieldname;
             $record->type = $fieldtype;
             $record->required = 1;
+            $record->private = 0;
 
             $generator->create_field($record, $this->database);
             $count++;
