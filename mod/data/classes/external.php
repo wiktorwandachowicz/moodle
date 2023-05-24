@@ -295,6 +295,10 @@ class mod_data_external extends external_api {
 
         // Now capabilities.
         $result['canmanageentries'] = has_capability('mod/data:manageentries', $context);
+        $result['caneditprivate'] = has_capability('mod/data:editprivatefields', $context);
+        $result['caneditownprivate'] = has_capability('mod/data:editownprivatefields', $context);
+        $result['canviewprivate'] = has_capability('mod/data:viewprivatefields', $context);
+        $result['canviewownprivate'] = has_capability('mod/data:viewownprivatefields', $context);
         $result['canapprove'] = has_capability('mod/data:approve', $context);
 
         // Now time access restrictions.
@@ -321,6 +325,10 @@ class mod_data_external extends external_api {
                 'groupid' => new external_value(PARAM_INT, 'User current group id (calculated)'),
                 'canaddentry' => new external_value(PARAM_BOOL, 'Whether the user can add entries or not.'),
                 'canmanageentries' => new external_value(PARAM_BOOL, 'Whether the user can manage entries or not.'),
+                'caneditprivate' => new external_value(PARAM_BOOL, 'Whether the user can edit private fields in all entries or not.'),
+                'caneditownprivate' => new external_value(PARAM_BOOL, 'Whether the user can edit private fields in own entries or not.'),
+                'canviewprivate' => new external_value(PARAM_BOOL, 'Whether the user can see private fields in all entries or not.'),
+                'canviewownprivate' => new external_value(PARAM_BOOL, 'Whether the user can see private fields in own entries or not.'),
                 'canapprove' => new external_value(PARAM_BOOL, 'Whether the user can approve entries or not.'),
                 'timeavailable' => new external_value(PARAM_BOOL, 'Whether the database is available or not by time restrictions.'),
                 'inreadonlyperiod' => new external_value(PARAM_BOOL, 'Whether the database is in read mode only.'),
@@ -418,11 +426,14 @@ class mod_data_external extends external_api {
             data_search_entries($database, $cm, $context, 'list', $groupid, '', $params['sort'], $params['order'],
                 $params['page'], $params['perpage']);
 
+        // Private fields support.
+        $fields = $DB->get_records('data_fields', array('dataid' => $database->id));
+
         $entries = [];
         $contentsids = [];  // Store here the content ids of the records returned.
         foreach ($records as $record) {
             $user = user_picture::unalias($record, null, 'userid');
-            $related = array('context' => $context, 'database' => $database, 'user' => $user);
+            $related = array('context' => $context, 'database' => $database, 'user' => $user, 'fields' => $fields);
 
             $contents = $DB->get_records('data_content', array('recordid' => $record->id));
             $contentsids = array_merge($contentsids, array_keys($contents));
@@ -535,7 +546,10 @@ class mod_data_external extends external_api {
             throw new moodle_exception('notapprovederror', 'data');
         }
 
-        $related = array('context' => $context, 'database' => $database, 'user' => null);
+        // Private fields support.
+        $fields = $DB->get_records('data_fields', array('dataid' => $database->id));
+
+        $related = array('context' => $context, 'database' => $database, 'user' => null, 'fields' => $fields);
         if ($params['returncontents']) {
             $related['contents'] = $DB->get_records('data_content', array('recordid' => $record->id));
         } else {
@@ -768,10 +782,13 @@ class mod_data_external extends external_api {
             data_search_entries($database, $cm, $context, 'list', $groupid, $params['search'], $params['sort'], $params['order'],
                 $params['page'], $params['perpage'], $advanced, $searcharray);
 
+        // Private fields support.
+        $fields = $DB->get_records('data_fields', array('dataid' => $database->id));
+
         $entries = [];
         foreach ($records as $record) {
             $user = user_picture::unalias($record, null, 'userid');
-            $related = array('context' => $context, 'database' => $database, 'user' => $user);
+            $related = array('context' => $context, 'database' => $database, 'user' => $user, 'fields' => $fields);
             if ($params['returncontents']) {
                 $related['contents'] = $DB->get_records('data_content', array('recordid' => $record->id));
             } else {
