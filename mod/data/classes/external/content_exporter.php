@@ -49,6 +49,11 @@ class content_exporter extends exporter {
                 'description' => 'The field type of the content.',
                 'default' => 0,
             ),
+            'private' => array(
+                'type' => PARAM_BOOL,
+                'description' => 'Whether field is private.',
+                'default' => 0,
+            ),
             'recordid' => array(
                 'type' => PARAM_INT,
                 'description' => 'The record this content belongs to.',
@@ -85,6 +90,7 @@ class content_exporter extends exporter {
     protected static function define_related() {
         return array(
             'context' => 'context',
+            'fields' => 'stdClass[]?',
         );
     }
 
@@ -100,6 +106,7 @@ class content_exporter extends exporter {
 
     protected function get_other_values(renderer_base $output) {
         $values = ['files' => external_util::get_area_files($this->related['context']->id, 'mod_data', 'content', $this->data->id)];
+        $values['private'] = $this->related['fields'][$this->data->fieldid]->private;
 
         return $values;
     }
