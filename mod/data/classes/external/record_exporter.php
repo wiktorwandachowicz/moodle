@@ -82,6 +82,7 @@ class record_exporter extends exporter {
             'database' => 'stdClass',
             'user' => 'stdClass?',
             'context' => 'context',
+            'fields' => 'stdClass[]?',
             'contents' => 'stdClass[]?',
         );
     }
@@ -91,6 +92,22 @@ class record_exporter extends exporter {
             'canmanageentry' => array(
                 'type' => PARAM_BOOL,
                 'description' => 'Whether the current user can manage this entry',
+            ),
+            'caneditprivate' => array(
+                'type' => PARAM_BOOL,
+                'description' => 'Whether the user can edit private fields in this entry.',
+            ),
+            'caneditownprivate' => array(
+                'type' => PARAM_BOOL,
+                'description' => 'Whether the user can edit own private fields in this entry.',
+            ),
+            'canviewprivate' => array(
+                'type' => PARAM_BOOL,
+                'description' => 'Whether the current user can see private fields in this entry.',
+            ),
+            'canviewownprivate' => array(
+                'type' => PARAM_BOOL,
+                'description' => 'Whether the current user can see own private fields in this entry.',
             ),
             'fullname' => array(
                 'type' => PARAM_TEXT,
@@ -115,8 +132,13 @@ class record_exporter extends exporter {
     protected function get_other_values(renderer_base $output) {
         global $PAGE;
 
+        $fieldoptions = data_user_privatefield_options($this->related['database']->id, $this->related['context']);
         $values = array(
             'canmanageentry' => data_user_can_manage_entry($this->data, $this->related['database'], $this->related['context']),
+            'caneditprivate'    => $fieldoptions['editprivate'],
+            'caneditownprivate' => $fieldoptions['editownprivate'],
+            'canviewprivate'    => $fieldoptions['viewprivate'],
+            'canviewownprivate' => $fieldoptions['viewownprivate'],
         );
 
         if (!empty($this->related['user']) and !empty($this->related['user']->id)) {
@@ -129,7 +151,14 @@ class record_exporter extends exporter {
         if (!empty($this->related['contents'])) {
             $contents = [];
             foreach ($this->related['contents'] as $content) {
-                $related = array('context' => $this->related['context']);
+                $related = array('context' => $this->related['context'], 'fields' => $this->related['fields']);
+                // Logic to show/hide private field contents.
+                $field = $this->related['fields'][$content->fieldid] ?? false;
+                if (!empty($field) && $field->private) {
+                    if (!data_user_canview_field($field, $fieldoptions, $this->data->id)) {
+                        $content->content = get_string('cannotviewprivatefield', 'data');
+                    }
+                }
                 $exporter = new content_exporter($content, $related);
                 $contents[] = $exporter->export($PAGE->get_renderer('core'));
             }
