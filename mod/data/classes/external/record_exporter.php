@@ -28,6 +28,7 @@ use core\external\exporter;
 use renderer_base;
 use core_user;
 use core_tag\external\tag_item_exporter;
+use mod_data\local\private_fields;
 
 /**
  * Class for exporting record data.
@@ -132,7 +133,7 @@ class record_exporter extends exporter {
     protected function get_other_values(renderer_base $output) {
         global $PAGE;
 
-        $fieldoptions = data_user_privatefield_options($this->related['database']->id, $this->related['context']);
+        $fieldoptions = private_fields::get_options($this->related['database']->id, $this->related['context']);
         $values = array(
             'canmanageentry' => data_user_can_manage_entry($this->data, $this->related['database'], $this->related['context']),
             'caneditprivate'    => $fieldoptions['editprivate'],
@@ -155,7 +156,7 @@ class record_exporter extends exporter {
                 // Logic to show/hide private field contents.
                 $field = $this->related['fields'][$content->fieldid] ?? false;
                 if (!empty($field) && $field->private) {
-                    if (!data_user_canview_field($field, $fieldoptions, $this->data->id)) {
+                    if (!private_fields::can_view_field($field, $fieldoptions, $this->data->id)) {
                         $content->content = get_string('cannotviewprivatefield', 'data');
                     }
                 }

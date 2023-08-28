@@ -22,6 +22,7 @@ use core\output\checkbox_toggleall;
 use data_field_base;
 use html_writer;
 use mod_data\manager;
+use mod_data\local\private_fields;
 use moodle_url;
 use pix_icon;
 use stdClass;
@@ -104,7 +105,7 @@ class template {
         $context = $manager->get_context();
         $this->canmanageentries = has_capability('mod/data:manageentries', $context);
         // Private fields support.
-        $this->fieldoptions = data_user_privatefield_options($this->instance->id, $context);
+        $this->fieldoptions = private_fields::get_options($this->instance->id, $context);
         $this->icons = $this->get_icons();
         $this->fields = $fields ?? $manager->get_fields();
         $this->add_options($options);
@@ -322,7 +323,7 @@ class template {
             // Field value.
             $pattern = '[[' . $field->field->name . ']]';
             // Logic to show/hide private field contents.
-            if (data_user_canview_field($field->field, $this->fieldoptions, $entry->id)) {
+            if (private_fields::can_view_field($field->field, $this->fieldoptions, $entry->id)) {
                 $result[$pattern] = highlight(
                     $this->search,
                     $field->display_browse_field($entry->id, $this->templatename)
@@ -1006,10 +1007,10 @@ class template {
                     (object)['name' => $field->field->name]
                 ));
             }
-        } else if (data_user_canedit_field($field->field, $this->fieldoptions, $entryid)) {
+        } else if (private_fields::can_edit_field($field->field, $this->fieldoptions, $entryid)) {
             $fielddisplay = $field->display_add_field($entryid, $entrydata);
         } else if (!empty($field->field->private)) {
-            if (data_user_canview_field($field->field, $this->fieldoptions, $entryid)) {
+            if (private_fields::can_view_field($field->field, $this->fieldoptions, $entryid)) {
                 $fielddisplay = $field->display_browse_field($entryid, $entrydata);
             } else {
                 $fielddisplay = get_string('cannoteditprivatefield', 'data');

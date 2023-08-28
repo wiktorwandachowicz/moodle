@@ -18,6 +18,7 @@ namespace mod_data\local\exporter;
 
 use context;
 use context_system;
+use mod_data\local\private_fields;
 
 /**
  * Utility class for exporting data from a mod_data instance.
@@ -51,10 +52,6 @@ class utils {
         bool $tags = false, bool $includefiles = true): void {
         global $DB;
 
-        global $CFG;
-        // For data_user_privatefield_options() and data_user_canview_field() functions.
-        require_once($CFG->dirroot . '/mod/data/lib.php');
-
         if (is_null($context)) {
             $context = context_system::instance();
         }
@@ -62,13 +59,13 @@ class utils {
         $userdetails = $userdetails && has_capability('mod/data:exportuserinfo', $context);
 
         // Private fields support.
-        $fieldoptions = data_user_privatefield_options($dataid, $context);
+        $fieldoptions = private_fields::get_options($dataid, $context);
 
         // Populate the header in first row of export.
         $header = [];
         foreach ($fields as $key => $field) {
             if (!in_array($field->field->id, $selectedfields) ||
-                    !data_user_canview_field($field->field, $fieldoptions)) {
+                    !private_fields::can_view_field($field->field, $fieldoptions)) {
                 // Ignore values we aren't exporting.
                 unset($fields[$key]);
             } else {
@@ -111,7 +108,7 @@ class utils {
                     // Reuse logic to show/hide private field contents.
                     $contents = '';
                     if (isset($content[$field->field->id]) &&
-                            data_user_canview_field($field->field, $fieldoptions, $record->id)) {
+                            private_fields::can_view_field($field->field, $fieldoptions, $record->id)) {
                         $contents = $field->export_text_value($content[$field->field->id]);
                         if (!empty($contents) && $field->file_export_supported() && $includefiles
                             && !is_null($field->export_file_value($record))) {

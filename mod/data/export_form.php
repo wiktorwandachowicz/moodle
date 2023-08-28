@@ -1,5 +1,7 @@
 <?php
 
+use \mod_data\local\private_fields;
+
 if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden!');
 }
@@ -69,14 +71,14 @@ class mod_data_export_form extends moodleform {
         $mform->setExpanded('exportfieldsheader');
         $numfieldsthatcanbeselected = 0;
 
-        $fieldoptions = data_user_privatefield_options($this->_data->id, context_module::instance($this->_cm->id));
+        $fieldoptions = private_fields::get_options($this->_data->id, context_module::instance($this->_cm->id));
 
         $exportfields = [];
         $unsupportedfields = [];
         foreach ($this->_datafields as $field) {
             $label = get_string('fieldnametype', 'data', (object)['name' => $field->field->name, 'type' => $field->name()]);
 
-            if (!data_user_canview_field($field->field, $fieldoptions)) {
+            if (!private_fields::can_view_field($field->field, $fieldoptions)) {
                 // Skip this field.
                 continue;
             } else if ($field->text_export_supported()) {

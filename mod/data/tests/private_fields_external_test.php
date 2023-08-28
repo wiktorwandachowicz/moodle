@@ -101,7 +101,7 @@ class private_fields_external_test extends externallib_advanced_testcase {
      * Test the behaviour of get_entry() with private fields.
      *
      * @covers ::get_entry
-     * @covers ::data_user_privatefield_options
+     * @covers private_fields::get_options
      * @covers record_exporter::get_other_values
      * @covers content_exporter::get_other_values
      * @dataProvider get_entries_with_private_fields_provider
@@ -168,7 +168,7 @@ class private_fields_external_test extends externallib_advanced_testcase {
      * Test the behaviour of get_entries() with private fields.
      *
      * @covers ::get_entries
-     * @covers ::data_user_privatefield_options
+     * @covers private_fields::get_options
      * @covers record_exporter::get_other_values
      * @dataProvider get_entries_with_private_fields_provider
      */
@@ -296,8 +296,8 @@ class private_fields_external_test extends externallib_advanced_testcase {
      * Test the behaviour of add_entry() with private fields.
      *
      * @covers ::add_entry
-     * @covers ::data_user_privatefield_options
-     * @covers ::data_user_canedit_field
+     * @covers private_fields::get_options
+     * @covers private_fields::can_edit_field
      * @dataProvider add_entry_with_private_fields_provider
      */
     public function test_data_add_entry_with_private_fields(
@@ -450,8 +450,8 @@ class private_fields_external_test extends externallib_advanced_testcase {
      * Test the behaviour of update_entry() with private fields.
      *
      * @covers ::update_entry
-     * @covers ::data_user_privatefield_options
-     * @covers ::data_user_canedit_field
+     * @covers private_fields::get_options
+     * @covers private_fields::can_edit_field
      * @dataProvider update_entry_with_private_fields_provider
      */
     public function test_data_update_entry_with_private_fields(

@@ -18,6 +18,7 @@ namespace mod_data;
 
 use context_module;
 use stdClass;
+use mod_data\local\private_fields;
 
 /**
  * Helper trait with private fields test data for mod_data.
@@ -181,8 +182,8 @@ class private_fields_template_test extends \advanced_testcase {
      * contents of locked private field should be replaced by warning.
      *
      * @covers ::parse_entries
-     * @covers ::data_user_privatefield_options
-     * @covers ::data_user_canview_field
+     * @covers private_fields::get_options
+     * @covers private_fields::can_view_field
      * @dataProvider parse_entries_with_private_fields_provider
      */
     public function test_parse_entries_with_private_fields(
@@ -339,9 +340,9 @@ class private_fields_template_test extends \advanced_testcase {
      * - warning text (without editing capabilities)
      *
      * @covers ::parse_add_entry
-     * @covers ::data_user_privatefield_options
-     * @covers ::data_user_canedit_field
-     * @covers ::data_user_canview_field
+     * @covers private_fields::get_options
+     * @covers private_fields::can_edit_field
+     * @covers private_fields::can_view_field
      * @dataProvider parse_add_entry_with_private_fields_provider
      */
     public function test_parse_add_entry_with_private_fields(
