@@ -23,6 +23,7 @@
  */
 
 use mod_quiz\output\grades\grade_out_of;
+use mod_quiz\output\renderer;
 
 require_once("../../config.php");
 require_once("locallib.php");
