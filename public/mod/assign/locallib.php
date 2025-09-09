@@ -2317,9 +2317,10 @@ class assign {
      * @param int $currentgroup
      * @param bool $idsonly
      * @param bool $tablesort
+     * @param bool $excludesuspended
      * @return array List of user records
      */
-    public function list_participants($currentgroup, $idsonly, $tablesort = false) {
+    public function list_participants($currentgroup, $idsonly, $tablesort = false, $excludesuspended = false) {
         global $DB, $USER;
 
         // Get the last known sort order for the grading table.
@@ -2393,8 +2394,10 @@ class assign {
                 }
             }
 
-            // Exclude suspended users from the list of participants.
-            $additionalfilters .= " AND u.suspended = 0 AND u.auth <> 'nologin'";
+            if ($this->show_only_active_users() || $excludesuspended) {
+                // Exclude suspended users from the list of participants.
+                $additionalfilters .= " AND u.suspended = 0 AND u.auth <> 'nologin'";
+            }
 
             $sql = "SELECT $fields
                       FROM {user} u
